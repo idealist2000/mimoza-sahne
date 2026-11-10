@@ -1,0 +1,30 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10121b; color: #f5f5fa; }
+body { max-width: 1280px; margin: auto; padding: 28px; }
+header span { color: #ffdb70; font-size: .8rem; letter-spacing: .15em; }
+h1 { font-size: clamp(2rem, 6vw, 4rem); margin: .15em 0; }
+header p, #status { color: #c3c8dc; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 20px; align-items: start; }
+section { background: #191d2b; border: 1px solid #34394b; border-radius: 16px; padding: 20px; }
+h2 { margin: 0 0 14px; font-size: 1.15rem; }
+details { margin: 15px 0 24px; }
+summary { cursor: pointer; }
+label { display: block; margin: 10px 0; }
+input, textarea, button { font: inherit; }
+input:not([type=color]), textarea { display: block; box-sizing: border-box; width: 100%; background: #11141d; border: 1px solid #535b73; border-radius: 7px; padding: 8px; margin-top: 4px; }
+textarea { resize: vertical; }
+button { padding: 8px 12px; border: 0; border-radius: 7px; color: #15151a; background: #ffdb70; font-weight: 650; cursor: pointer; margin: 4px 0; }
+button:disabled { opacity: .5; cursor: default; }
+canvas, video { display: block; width: 100%; background: #0c0d14; border-radius: 8px; }
+video { height: 46px; margin: 10px 0; }
+.scene { display: grid; grid-template-columns: 1fr 1fr auto; gap: 7px; padding: 8px 0; border-bottom: 1px solid #34394b; }
+.scene label { margin: 0; font-size: .85rem; }
+.scene label:first-child { grid-column: 1 / -1; }
+.scene button { align-self: end; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; } body { padding: 14px; } }
+#studio { margin-bottom: 20px; }
+#capture-options { border: 1px solid #535b73; border-radius: 8px; margin-bottom: 12px; }
+#capture-options input[type=checkbox] { display: inline; width: auto; margin-right: 6px; }
+#capture-preview { max-width: 640px; margin: 10px 0; }
+[hidden] { display: none !important; }
+.range { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+select { display: block; width: 100%; padding: 8px; margin-top: 4px; font: inherit; }

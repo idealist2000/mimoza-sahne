@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mimoza Sahne</title>
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+<script type="module" src="/capture.js"></script>
+</head>
+<body>
+<header><span>MİMOZA BİLİŞİM / VİDEO ATÖLYESİ</span><h1>Mimoza Sahne</h1><p>Konuşmanızdaki önemli anları hareketli başlıklarla öne çıkarın.</p></header>
+<section id="studio">
+<h2>Kayıt stüdyosu</h2>
+<fieldset id="capture-options">
+<legend>Kaynaklar</legend>
+<label><input id="record-screen" type="checkbox" checked> Bilgisayar ekranı veya pencere</label>
+<label><input id="record-camera" type="checkbox"> Kamera (ekranla birlikte köşede)</label>
+<label><input id="record-mic" type="checkbox" checked> Mikrofon</label>
+<label><input id="record-system" type="checkbox"> Ekran sesi (paylaşım penceresi izin verirse)</label>
+<label>Yeşil perde yerine arka plan görseli <input id="record-background" type="file" accept="image/*"></label>
+</fieldset>
+<canvas id="capture-preview" width="1280" height="720" hidden aria-label="Kayıt önizlemesi"></canvas>
+<button id="record-start">Kaydı başlat</button>
+<button id="record-stop" disabled>Kaydı bitir</button>
+<p id="record-status" role="status">İsterseniz aşağıdan hazır video da ekleyebilirsiniz.</p>
+</section>
+<main id="editor">
+<section>
+<h2>1. Videoyu ve metni ekleyin</h2>
+<label>Video <input id="file" type="file" accept="video/*"></label>
+<label>SRT altyazı dosyası <input id="srt" type="file" accept=".srt"></label>
+<label>Konuşma metni veya SRT <textarea id="script" rows="7" placeholder="SRT yükleyin veya konuşma metnini buraya yapıştırın. Düz metinde her satır video süresine eşit dağıtılır."></textarea></label>
+<button id="quick">Hızlı plan</button>
+<details><summary>Ollama ile yapay zekâ planı</summary>
+<label>Yüklü yerel model adı <input id="model" placeholder="Ollama listesinde görünen model adı"></label>
+<button id="ai">Yapay zekâ ile planla</button>
+</details>
+<h2>2. Başlıkları düzenleyin</h2>
+<label>Vurgu rengi <input id="accent" type="color" value="#ffdb70"></label>
+<div id="scenes"></div>
+<button id="add">Başlık ekle</button>
+</section>
+<section>
+<h2>3. Önizleyin ve indirin</h2>
+<canvas id="canvas" width="960" height="540" aria-label="Video önizlemesi"></canvas>
+<video id="video" controls playsinline preload="auto" aria-label="Kaynak video ve oynatma kontrolleri"></video>
+<label>Video biçimi
+<select id="aspect"><option value="source">Kaynak boyutu</option><option value="16:9">Yatay 16:9</option><option value="9:16">Dikey 9:16</option><option value="1:1">Kare 1:1</option></select>
+</label>
+<label>Çıktı türü <select id="format"><option value="webm">WebM</option><option value="mp4">MP4 (tarayıcı destekliyorsa)</option></select></label>
+<div class="range">
+<label>Kesit başlangıcı (sn) <input id="trim-start" type="number" min="0" step="0.01" value="0"></label>
+<label>Kesit bitişi (sn) <input id="trim-end" type="number" min="0" step="0.01" placeholder="Video sonu"></label>
+</div>
+<button id="export">Videoyu indir</button>
+<button id="poster">Geçerli kareyi PNG indir</button>
+<button id="cancel" hidden>İptal</button>
+<p id="status" role="status">Başlamak için bir video seçin.</p>
+</section>
+</main>
+</body>
+</html>
+
+
+
