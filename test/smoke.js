@@ -20,6 +20,9 @@ app.on('web-contents-created', (e, wc) => {
   });
 });
 
+process.env.MIMOZA_WHISPER = path.join(__dirname, 'fake-whisper.js');
+process.env.MIMOZA_WHISPER_MODEL = path.join(out, 'sahte-model.bin');
+fs.writeFileSync(process.env.MIMOZA_WHISPER_MODEL, 'x');
 require('../src/main/main.js');
 // Örnek projeyi oluştur
 const ff = require('../src/main/ffmpeg.js');
@@ -72,12 +75,56 @@ app.whenReady().then(async () => {
     await js("document.querySelector('.seg-item.zoom').dispatchEvent(new PointerEvent('pointerdown', {bubbles:true, button:0, pointerId:1}))");
     await wait(300);
     await shot('3-yakinlastirma-secili');
+    // ---------- Teslim 2 ----------
+    await js("EditorAPI.select(null); document.querySelector('[data-tab=text]').click()");
+    await wait(600);
+    await shot('6a-metin-formu');
+    await js("document.querySelector('#tab-text button.primary').click()");
+    for (let i = 0; i < 40; i++) { await wait(250); if (await js("!!document.getElementById('transcript')")) break; }
+    await js("document.getElementById('v-screen').currentTime = 3.2");
+    await shot('7-metin');
+    const before = await js("JSON.stringify(EditorAPI.keep)");
+    await js(`(() => { const s = document.querySelectorAll('#transcript .wd'); s[4].dispatchEvent(new PointerEvent('pointerdown', {bubbles:true, button:0})); s[5].dispatchEvent(new PointerEvent('pointerdown', {bubbles:true, button:0, shiftKey:true})); })()`);
+    await wait(200);
+    await shot('7b-metin-secim');
+    await js("window.dispatchEvent(new KeyboardEvent('keydown', {key:'Delete', bubbles:true}))");
+    await wait(300);
+    console.log('METINDEN KESIM:', before, '=>', await js("JSON.stringify(EditorAPI.keep)"));
+    console.log('UYDURMA SUZULDU MU:', await js("!EditorAPI.P.transcript.words.some(w => /M\\.K/.test(w.w))"));
+    await js("document.querySelector('[data-tab=clean]').click()");
+    await wait(300);
+    await js("[...document.querySelectorAll('#tab-clean button')].find(b => b.textContent.includes('Önerileri bul')).click()");
+    for (let i = 0; i < 40; i++) { await wait(250); if (await js("!!document.querySelector('.sug-apply')")) break; }
+    await shot('8-temizlik');
+    console.log('ONERILER:', await js("[...document.querySelectorAll('.sug-group summary')].map(x => x.textContent).join(' | ')"));
+    await js("[...document.querySelectorAll('#tab-clean button')].find(b => b.textContent.includes('Seçilenleri kes')).click()");
+    await wait(300);
+    console.log('ONERI SONRASI:', await js("JSON.stringify(EditorAPI.keep)"));
+    await js("document.querySelector('[data-tab=brand]').click()");
+    await wait(300);
+    await js("EditorAPI.seekSrc(1.0)");
+    await js("[...document.querySelectorAll('#tab-brand button')].find(b => b.textContent.includes('Alt bant')).click()");
+    await js("[...document.querySelectorAll('#tab-brand button')].find(b => b.textContent.includes('işaretlerinden')).click()");
+    await js("[...document.querySelectorAll('#tab-brand input[type=checkbox]')].forEach(c => { if (!c.checked) c.click(); })");
+    await wait(300);
+    await js("EditorAPI.seekSrc(2.2)");
+    await shot('9-sablonlar');
+    await js("[...document.querySelectorAll('#tab-brand button')].find(b => b.textContent.includes('Açılışı önizle')).click()");
+    await wait(1600);
+    await shot('10-acilis');
+    await wait(3000);
+    await js("[...document.querySelectorAll('#tab-brand button')].find(b => b.textContent.includes('Kapanışı önizle')).click()");
+    await wait(2200);
+    await shot('11-kapanis');
+    await wait(3500);
+    await js("EditorAPI.select(null)");
+    await shot('12-sag-panel');
     // Arayüzden dışa aktarma
     process.env.MIMOZA_EXPORT_PATH = path.join(out, 'disa-aktarim.mp4');
     await js("document.getElementById('export-open').click()");
     await wait(600);
     await shot('3b-disa-aktar');
-    await js("document.getElementById('ex-res').value='720'; document.getElementById('ex-go').click()");
+    await js("document.getElementById('ex-res').value='720'; document.getElementById('ex-srt').checked = true; document.getElementById('ex-go').click()");
     for (let i = 0; i < 120; i++) { await wait(500); if (await js("!document.getElementById('export-done').hidden || !document.getElementById('export-form').hidden")) break; }
     await shot('3c-disa-aktarim-bitti');
     console.log('DISA AKTARIM:', await js("document.getElementById('ex-done-info').textContent + ' | ' + document.getElementById('ex-summary').textContent"));

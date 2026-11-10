@@ -100,6 +100,12 @@
     srcDur = P.media.screen.duration;
     history = []; future = []; sel = null;
     E.zooms ||= []; E.blurs ||= []; E.mutes ||= [];
+    E.overlays ||= [];
+    E.captions ||= { on: false, style: 'karaoke', pos: 'bottom', size: 1 };
+    E.audio ||= { denoise: true, normalize: true, duck: true };
+    E.output.layout ||= 'fit';
+    if (E.range === undefined) E.range = null;
+    await window.EditorHooks?.onOpen?.(P, E);
     recompute();
     $('project-name').value = P.name;
     $('save-state').textContent = '';
@@ -132,6 +138,7 @@
     renderInspector();
     renderMarks();
     updateUndo();
+    window.EditorHooks?.afterOpen?.();
   }
   function close() {
     if (!P) return;
@@ -140,6 +147,15 @@
     P = null;
   }
   window.Editor = { open, close, get busy() { return busy; } };
+  // Paneller için iç arayüz
+  window.EditorAPI = {
+    get P() { return P; }, get E() { return E; }, get keep() { return keep; }, get outDur() { return outDur; }, get srcDur() { return srcDur; },
+    get sel() { return sel; }, get pps() { return pps; }, get playing() { return playing; }, get size() { return { W: OW, H: OH }; },
+    change, select, seekSrc, seekOut, play, pause, curT, scheduleSave, save, renderTimeline, renderInspector, layout, layoutRects, fmt, uid,
+    segEl: (...a) => segEl(...a), attachSegDrag: (...a) => attachSegDrag(...a),
+    ui: { row: (...a) => row(...a), slider: (...a) => slider(...a), segButtons: (...a) => segButtons(...a), checkbox: (...a) => checkbox(...a), group: (...a) => group(...a), btn: (...a) => btn(...a), selTitle: (...a) => selTitle(...a) },
+    setBusy: v => { busy = v; },
+  };
 
   $('project-name').addEventListener('change', () => {
     if (!P) return;
@@ -220,12 +236,14 @@
     if (!r) return { x: 0, y: 0, w: vw, h: vh, vw, vh };
     return { x: r.x * vw, y: r.y * vh, w: Math.max(16, r.w * vw), h: Math.max(16, r.h * vh), vw, vh };
   }
+  const hasCam = () => !!(media('camera') && E.camera.visible);
+  function layoutRects() { const R = sourceRect(); return TL.layoutRects(E, OW, OH, R.w, R.h, hasCam()); }
   function layout(t, ignoreZoom) {
     const R = sourceRect();
-    const pad = E.output.aspect === '16:9' ? 0 : Math.round(Math.min(OW, OH) * 0.03);
-    const fit = TL.fitRect(R.w, R.h, OW, OH, pad);
+    const LR = TL.layoutRects(E, OW, OH, R.w, R.h, hasCam());
+    const fit = LR.screen;
     const vp = ignoreZoom ? { x: 0, y: 0, w: 1, h: 1, scale: 1 } : TL.zoomViewport(E.zooms, t);
-    return { R, fit, vp, k: fit.w / (vp.w * R.w) };
+    return { R, fit, vp, k: fit.w / (vp.w * R.w), LR };
   }
   const toOut = (L, u, v) => [L.fit.x + (u - L.vp.x) / L.vp.w * L.fit.w, L.fit.y + (v - L.vp.y) / L.vp.h * L.fit.h];
   const toSrc = (L, X, Y) => [L.vp.x + (X - L.fit.x) / L.fit.w * L.vp.w, L.vp.y + (Y - L.fit.y) / L.fit.h * L.vp.h];
@@ -280,7 +298,10 @@
   ringImg = makeRing();
   clickImg = makeClick();
 
+  const camShape = () => (layoutRects().split ? 'rect' : E.camera.shape);
   function camRect() {
+    const LR = layoutRects();
+    if (LR.split) return LR.cam;
     const cam = media('camera');
     const aspect = cam?.width && cam?.height ? cam.width / cam.height : 16 / 9;
     return TL.cameraRect(E.camera, OW, OH, aspect);
@@ -289,6 +310,9 @@
   function draw() {
     if (!P || App.view !== 'editor') return;
     const t = curT();
+    const H = window.EditorHooks;
+    ctx.setTransform(previewScale, 0, 0, previewScale, 0, 0);
+    if (H?.drawCard?.(ctx, OW, OH)) return;
     const editingZoom = sel?.type === 'zoom' && !playing ? E.zooms.find(z => z.id === sel.id) : null;
     const L = layout(t, !!editingZoom);
     ctx.setTransform(previewScale, 0, 0, previewScale, 0, 0);
@@ -363,11 +387,12 @@
         const r = camRect();
         const iw = vCam.videoWidth, ih = vCam.videoHeight;
         let sx = 0, sy = 0, sw = iw, sh = ih;
-        if (E.camera.shape === 'rect') {
+        const shape = camShape();
+        if (shape === 'rect') {
           const s = Math.max(r.w / iw, r.h / ih); sw = r.w / s; sh = r.h / s; sx = (iw - sw) / 2; sy = (ih - sh) / 2;
         } else { const m = Math.min(iw, ih); sw = sh = m; sx = (iw - m) / 2; sy = (ih - m) / 2; }
         ctx.save();
-        shapePath(ctx, r.x, r.y, r.w, r.h, E.camera.shape);
+        shapePath(ctx, r.x, r.y, r.w, r.h, shape);
         ctx.clip();
         if (E.camera.mirror) { ctx.translate(r.x * 2 + r.w, 0); ctx.scale(-1, 1); }
         ctx.drawImage(vCam, sx, sy, sw, sh, r.x, r.y, r.w, r.h);
@@ -375,11 +400,13 @@
         if (sel?.type === 'camera') {
           ctx.save();
           ctx.strokeStyle = '#3ddc97'; ctx.lineWidth = 3 / previewScale;
-          shapePath(ctx, r.x, r.y, r.w, r.h, E.camera.shape); ctx.stroke();
+          shapePath(ctx, r.x, r.y, r.w, r.h, shape); ctx.stroke();
           ctx.restore();
         }
       }
     }
+    // Şablonlar ve altyazı
+    H?.drawAfter?.(ctx, t, OW, OH, L);
     // Saat ve oynatma çizgisi
     const o = TL.sourceToOutput(keep, t);
     $('cur-time').textContent = fmt(o);
@@ -411,7 +438,7 @@
     const t = curT();
     // Kamera
     const cam = media('camera');
-    if (cam && E.camera.visible) {
+    if (cam && E.camera.visible && !layoutRects().split) {
       const r = camRect();
       if (X >= r.x && X <= r.x + r.w && Y >= r.y && Y <= r.y + r.h) {
         select({ type: 'camera' });
@@ -448,7 +475,7 @@
     if (!drag) {
       if (!P) return;
       const cam = media('camera');
-      const r = cam && E.camera.visible ? camRect() : null;
+      const r = cam && E.camera.visible && !layoutRects().split ? camRect() : null;
       canvas.style.cursor = r && X >= r.x && X <= r.x + r.w && Y >= r.y && Y <= r.y + r.h ? 'move' : sel?.type === 'zoom' ? 'crosshair' : 'default';
       return;
     }
@@ -522,7 +549,7 @@
       change(() => { E.blurs = E.blurs.filter(b => b.id !== sel.id); }); select(null);
     } else if (sel.type === 'camera') {
       change(() => { E.camera.visible = false; }); select(null);
-    }
+    } else window.EditorHooks?.deleteSel?.(sel);
   }
   function addZoom() {
     const t = curT();
@@ -557,7 +584,7 @@
 
   addEventListener('keydown', e => {
     if (App.view !== 'editor' || !P || busy || !$('export-modal').hidden) return;
-    if (e.target.matches('input, textarea, select')) return;
+    if (e.target?.matches?.('input, textarea, select')) return;
     const k = e.key.toLowerCase();
     if (e.ctrlKey && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (e.ctrlKey && k === 'y') { e.preventDefault(); redo(); return; }
@@ -572,8 +599,19 @@
     else if (k === 'end') { pause(); seekOut(outDur); }
     else if (k === 'arrowleft') { pause(); seekOut(TL.sourceToOutput(keep, curT()) - (e.shiftKey ? 1 : 1 / FPS)); }
     else if (k === 'arrowright') { pause(); seekOut(TL.sourceToOutput(keep, curT()) + (e.shiftKey ? 1 : 1 / FPS)); }
+    else if (k === 'i') setRange('s');
+    else if (k === 'o') setRange('e');
     else if (k === 'escape') select(null);
   });
+  function setRange(which) {
+    const t = curT();
+    change(() => {
+      const r = E.range ? { ...E.range } : { s: 0, e: srcDur };
+      r[which] = t;
+      if (r.e - r.s < 0.5) { if (which === 's') r.e = Math.min(srcDur, r.s + 5); else r.s = Math.max(0, r.e - 5); }
+      E.range = r;
+    });
+  }
 
   // ---------- Bölüm işaretleri ----------
   function renderMarks() {
@@ -610,6 +648,7 @@
 
   function tracks() {
     const list = [
+      ...(window.EditorHooks?.tracksBefore?.() || []),
       { key: 'zoom', name: 'Yakınlaştırma', icon: 'zoom' },
       { key: 'blur', name: 'Bulanıklaştırma', icon: 'blur' },
       { key: 'screen', name: P.capture?.kind === 'import' ? 'Video' : 'Ekran', icon: 'screen' },
@@ -670,6 +709,15 @@
       f.title = m.label;
       f.style.left = (TL.sourceToOutput(keep, m.t) * pps) + 'px';
       frag.push(f);
+    }
+    if (E.range) {
+      const r = document.createElement('div');
+      r.className = 'range-zone';
+      const a = TL.sourceToOutput(keep, E.range.s), b = TL.sourceToOutput(keep, E.range.e);
+      r.style.left = (a * pps) + 'px';
+      r.style.width = Math.max(2, (b - a) * pps) + 'px';
+      r.title = 'Dışa aktarma aralığı (I / O)';
+      frag.push(r);
     }
     ruler.replaceChildren(...frag);
   }
@@ -772,6 +820,8 @@
         const cam = media('camera');
         const el = segEl('cam' + (E.camera.visible ? '' : ' off'), Math.max(0, cam.offset || 0), Math.min(srcDur, (cam.offset || 0) + cam.duration), E.camera.visible ? 'Kamera' : 'Kamera gizli');
         if (el) { el.onpointerdown = e => { e.stopPropagation(); select({ type: 'camera' }); }; row.append(el); }
+      } else if (window.EditorHooks?.renderTrack?.(tr.key, row)) {
+        // Panel tarafından çizildi
       } else if (tr.key === 'mic' || tr.key === 'system') {
         const w = document.createElement('div');
         w.className = 'wave';
@@ -946,13 +996,19 @@
         btn(icon('trash') + 'Parçayı sil', deleteSelection));
     } else if (sel?.type === 'camera') {
       parts.push(selTitle('camera', 'Kamera'), cameraGroup());
+    } else if (window.EditorHooks?.inspector && sel && !['zoom', 'blur', 'clip', 'camera'].includes(sel.type)) {
+      const extra = window.EditorHooks.inspector(sel);
+      if (!extra) { sel = null; return renderInspector(); }
+      parts.push(...extra);
     } else {
       parts.push(selTitle('gear', 'Video ayarları'),
         group('Çıktı',
           row('Biçim', segButtons([['16:9', 'Yatay'], ['9:16', 'Dikey'], ['1:1', 'Kare']], E.output.aspect, v => change(() => { E.output.aspect = v; }))),
           row('Çözünürlük', segButtons([[1080, '1080p'], [720, '720p']], E.output.quality, v => change(() => { E.output.quality = v; }))),
           row('Arka plan', (() => { const c = Object.assign(document.createElement('input'), { type: 'color', value: E.output.bg || '#101418' }); c.onchange = () => change(() => { E.output.bg = c.value; }); return c; })()),
+          ...(E.output.aspect === '9:16' && media('camera') ? [row('Dikey düzen', segButtons([['fit', 'Sığdır'], ['split', 'Ekran üstte, kamera altta']], E.output.layout || 'fit', v => change(() => { E.output.layout = v; E.camera.visible = true; })))] : []),
         ));
+      parts.push(...(window.EditorHooks?.defaultGroups?.() || []));
       if (cursorEnabled()) parts.push(group('İmleç',
         row('Vurgu halkası', checkbox(E.cursor.highlight, v => change(() => { E.cursor.highlight = v; }))),
         row('Tıklama efekti', checkbox(E.cursor.clicks, v => change(() => { E.cursor.clicks = v; }))),
@@ -970,6 +1026,14 @@
     pause();
     $('ex-aspect').value = E.output.aspect;
     $('ex-res').value = String(E.output.quality);
+    $('ex-range').value = 'all';
+    $('ex-range').options[1].disabled = !E.range;
+    $('ex-range').options[1].textContent = E.range ? `Yalnızca seçili aralık (${fmt(TL.sourceToOutput(keep, E.range.s), false)} – ${fmt(TL.sourceToOutput(keep, E.range.e), false)})` : 'Yalnızca seçili aralık (kurguda I ve O ile seçin)';
+    const hasWords = !!P.transcript?.words?.length;
+    $('ex-captions').checked = hasWords && !!E.captions?.on;
+    $('ex-captions').disabled = !hasWords;
+    $('ex-srt').checked = false;
+    $('ex-srt').disabled = !hasWords;
     $('export-form').hidden = false;
     $('export-progress').hidden = true;
     $('export-done').hidden = true;
@@ -979,11 +1043,14 @@
   }
   function summaryText() {
     const size = TL.outputSize($('ex-aspect').value, +$('ex-res').value);
-    return `Süre ${fmt(outDur, false)} · ${size.w}×${size.h} · ${keep.length} parça · ${E.zooms.length} yakınlaştırma`;
+    const range = $('ex-range').value === 'range' && E.range ? E.range : null;
+    const dur = TL.outputDuration(TL.clipKeep(keep, range)) + (!range && E.intro?.on ? E.intro.dur || 4 : 0) + (!range && E.outro?.on ? E.outro.dur || 5 : 0);
+    return `Süre ${fmt(dur, false)} · ${size.w}×${size.h} · ${keep.length} parça · ${E.zooms.length} yakınlaştırma` + (E.overlays?.length ? ` · ${E.overlays.length} şablon` : '');
   }
   function updateSummary() { $('ex-summary').textContent = summaryText(); }
   $('ex-aspect').onchange = updateSummary;
   $('ex-res').onchange = updateSummary;
+  $('ex-range').onchange = updateSummary;
   $('export-open').onclick = openExport;
   $('ex-close').onclick = () => { $('export-modal').hidden = true; };
   $('ex-done-close').onclick = () => { $('export-modal').hidden = true; };
@@ -997,10 +1064,14 @@
     $('ex-label').textContent = label ? '· ' + label : '';
   });
   $('ex-go').onclick = async () => {
-    change(() => { E.output.aspect = $('ex-aspect').value; E.output.quality = +$('ex-res').value; });
+    change(() => {
+      E.output.aspect = $('ex-aspect').value; E.output.quality = +$('ex-res').value;
+      if (E.captions) E.captions.on = $('ex-captions').checked;
+    });
     await save();
+    const range = $('ex-range').value === 'range' && E.range ? { ...E.range } : null;
     const assets = { ring: ringImg.toDataURL('image/png'), click: clickImg.toDataURL('image/png') };
-    if (media('camera') && E.camera.visible) {
+    if (media('camera') && E.camera.visible && !layoutRects().split) {
       const r = camRect();
       assets.mask = makeMask(r.w, r.h, E.camera.shape).toDataURL('image/png');
     }
@@ -1008,16 +1079,21 @@
     $('export-progress').hidden = false;
     $('ex-bar').style.width = '0';
     $('ex-pct').textContent = '0%';
-    $('ex-label').textContent = '· Başlatılıyor';
+    $('ex-label').textContent = '· Hazırlanıyor';
     busy = true;
-    const { cursorData, ...rest } = P;
-    const res = await api.exporter.start(P.id, { ...rest, edit: E }, assets, { quality: $('ex-quality').value });
+    let res;
+    try {
+      const extra = (await window.EditorHooks?.exportAssets?.({ range, srt: $('ex-srt').checked, onStep: t => { $('ex-label').textContent = '· ' + t; } })) || {};
+      Object.assign(assets, extra.assets || {});
+      const { cursorData, transcript, silences, ...rest } = P;
+      res = await api.exporter.start(P.id, { ...rest, edit: E }, assets, { quality: $('ex-quality').value, range, srt: extra.srt || null, suffix: range ? ' (klip)' : '' });
+    } catch (err) { res = { error: err.message }; }
     busy = false;
     $('export-progress').hidden = true;
     if (res.canceled) { $('export-form').hidden = false; return; }
     if (res.error) { $('export-form').hidden = false; $('ex-summary').textContent = 'Dışa aktarılamadı: ' + res.error; return; }
     lastFile = res.file;
     $('export-done').hidden = false;
-    $('ex-done-info').textContent = `${res.file} · ${Math.round(res.seconds)} saniyede hazırlandı (${res.encoder}).`;
+    $('ex-done-info').textContent = `${res.file} · ${Math.round(res.seconds)} saniyede hazırlandı (${res.encoder}).` + (res.srt ? ' Altyazı dosyası da yanına kaydedildi.' : '');
   };
 })();

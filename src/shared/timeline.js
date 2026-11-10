@@ -172,7 +172,29 @@
     return { x, y, w, h };
   }
 
+  // Düzen: ekran kutusu, (bölünmüş düzende) kamera kutusu ve altyazı konumu.
+  // split: dikey videoda ekran üstte, kamera altta.
+  function layoutRects(edit, OW, OH, SW, SH, hasCam) {
+    const split = edit.output.aspect === '9:16' && edit.output.layout === 'split' && hasCam;
+    if (split) {
+      const areaH = Math.min(Math.round(OH * 0.5 / 2) * 2, Math.round(OW * SH / SW / 2) * 2);
+      const f = fitRect(SW, SH, OW, areaH, 0);
+      const screen = { x: f.x, y: 0, w: f.w, h: f.h };
+      const cam = { x: 0, y: areaH, w: OW, h: OH - areaH };
+      return { split: true, screen, cam, captionY: areaH / OH };
+    }
+    const pad = edit.output.aspect === '16:9' ? 0 : Math.round(Math.min(OW, OH) * 0.03);
+    return { split: false, screen: fitRect(SW, SH, OW, OH, pad), cam: null, captionY: null };
+  }
+
+  // Dışa aktarma aralığı (giriş-çıkış) ile kesimleri birleştirir.
+  function clipKeep(keep, range) {
+    if (!range) return keep;
+    return keep.map(k => ({ s: Math.max(k.s, range.s), e: Math.min(k.e, range.e) })).filter(k => k.e - k.s > 0.02);
+  }
+
   const api = {
+    layoutRects, clipKeep,
     EASE, clamp, normalizeKeep, outputDuration, sourceToOutput, outputToSource, splitAt, removeRange,
     zoomAt, zoomViewport, ffZoomExpressions, autoZooms, outputSize, fitRect, cameraRect, ffNum,
   };

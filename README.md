@@ -63,6 +63,36 @@ Yapay zekâ profili prompt ve yanıtı yan yana, İngilizce profili kelime-anlam
 
 Projeler `Belgeler\Mimoza Sahne\Projeler` klasöründe durur. Her kanalın ham kaydı proje klasöründe ayrı dosya olarak saklanır.
 
+## Altyazı ve metinden kurgu
+
+**Metin** sekmesinde dili (Türkçe, İngilizce veya otomatik) ve doğruluğu seçip **Altyazı oluştur** deyin. Konuşma bu bilgisayarda [whisper.cpp](https://github.com/ggml-org/whisper.cpp) ile yazıya dökülür, ses internete gönderilmez. Model ilk kullanımda bir kez indirilir: "Doğru" 466 MB, "Hızlı" 142 MB.
+
+- Kelimeye tıklayınca video o ana gider. Kelimeleri sürükleyerek seçip `Delete`'e basınca o kısım videodan kesilir. Kesilen kelimenin üstü çizili görünür; seçip tekrar `Delete` ile geri getirilir.
+- Kelimeye çift tıklayıp düzeltebilirsiniz.
+- Üç altyazı stili: **Klasik** (koyu kutu), **Vurgulu** (söylenen kelime sarı, Reels/Shorts tarzı), **Büyük** (ortada, büyük harf). Altyazı Montserrat yazı tipiyle videoya gömülür; isterseniz ayrıca SRT dosyası kaydedilir.
+- Alt bant görünürken altyazı otomatik olarak yukarı kayar.
+
+## Temizlik
+
+- **Kesim önerileri:** Uzun sessizlikler, dolgu sesleri ("ııı", "eee", "hmm"), dolgu kelimeleri ("şey", "yani", "hani"), yazıya dökülmemiş tereddüt sesleri ve tekrarlanan sözler. Hiçbiri kendiliğinden kesilmez; her öneriyi dinleyip seçer, sonra **Seçilenleri kes** dersiniz. `Ctrl+Z` ile geri alınır.
+- **Ses iyileştirme:** Gürültü azaltma, YouTube seviyesinde ses dengeleme (-14 LUFS) ve konuşurken bilgisayar sesini kısma. **10 sn işlenmiş sesi dinle** düğmesiyle sonucu dışa aktarmadan duyabilirsiniz.
+
+## Mimoza şablonları
+
+**Şablonlar** sekmesinde sarı-lacivert marka öğeleri:
+
+- **Alt bant:** Logo, ad ve unvan ("Onur Kalafat · SEO ve Yapay Zekâ Uzmanı"). Unvan her video için değiştirilebilir, örneğin "İngilizce Öğretmeni".
+- **Konu başlığı** ve **bölüm kartları**. Kayıtta koyduğunuz bölüm işaretlerinden tek tıkla kart üretilir.
+- **Köşede web sitesi** (tüm video boyunca).
+- **Açılış** (logo, başlık, alt başlık; 4 sn) ve **kapanış** (abone ol düğmesi ve iletişim bilgileri; 5 sn). Önizle düğmesiyle izleyebilirsiniz.
+
+Şablonlar zaman çizelgesinde kendi kanalındadır; kenarlarından tutup süresini, sağ panelden yazılarını değiştirin.
+
+## Kısa klip
+
+- Dikey 9:16 biçiminde **"Ekran üstte, kamera altta"** düzeni.
+- Oynatma çizgisini getirip `I` ile başlangıcı, `O` ile bitişi seçin. Dışa aktarırken **Yalnızca seçili aralık** deyin.
+
 ## Dışa aktarma
 
 Yatay 16:9 (YouTube), dikey 9:16 (Shorts, Reels) veya kare 1:1, 1080p ya da 720p MP4. Program bilgisayarınızdaki donanım kodlayıcıyı (Intel Quick Sync, NVIDIA veya AMD) otomatik bulur ve kullanır. Bulamazsa işlemciyle kodlar. Dışa aktarma video süresini beklemez ve arka planda çalışır.
@@ -71,7 +101,7 @@ Yatay 16:9 (YouTube), dikey 9:16 (Shorts, Reels) veya kare 1:1, 1080p ya da 720p
 
 ```
 npm install
-node scripts/fetch-ffmpeg.js   # Windows paketine girecek FFmpeg
+node scripts/fetch-ffmpeg.js   # Windows paketine girecek FFmpeg (ve whisper.cpp yönergesi)
 npm start                      # geliştirme modunda çalıştır (sistemdeki ffmpeg kullanılır)
 npm test                       # dışa aktarma motoru testleri
 npm run dist                   # Windows kurulum dosyası (dist/)
@@ -81,7 +111,7 @@ npm run dist                   # Windows kurulum dosyası (dist/)
 
 ## Yol haritası
 
-- **Teslim 2:** Tek tıkla Türkçe/İngilizce altyazı, metinden kesme, sessizlik ve "ııı" temizleme, gürültü azaltma, Mimoza marka şablonları, yeşil perdesiz arka plan, uzun videodan dikey kısa klip.
+- **Sıradaki:** Yeşil perdesiz kamera arka planı (bulanıklaştırma veya görselle değiştirme).
 - **Teslim 3:** OpenAI, Claude, Gemini, You.com ve Ollama ile başlık-açıklama-etiket, YouTube'a yükleme ve canlı yayın.
 
 ## Teşekkür

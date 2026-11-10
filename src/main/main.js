@@ -7,6 +7,8 @@ const { Readable } = require('node:stream');
 const ff = require('./ffmpeg.js');
 const projects = require('./projects.js');
 const inputLog = require('./input-log.js');
+const speech = require('./speech.js');
+const { net } = require('electron');
 const T = require('../shared/timeline.js');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
@@ -16,6 +18,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 app.setAppUserModelId('tr.com.mimozabilisim.sahne');
 
 if (app.isPackaged) ff.setFfmpegPath(path.join(process.resourcesPath, 'bin', 'ffmpeg.exe'));
+const FONTS = path.join(__dirname, '..', 'assets', 'fonts');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'mimoza', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: false } },
@@ -170,7 +173,7 @@ function setupProtocol() {
     let stat;
     try { stat = fs.statSync(file); } catch { return new Response('Bulunamadı', { status: 404 }); }
     const ext = path.extname(file).toLowerCase();
-    const type = { '.mp4': 'video/mp4', '.webm': 'video/webm', '.png': 'image/png', '.jpg': 'image/jpeg', '.mov': 'video/quicktime', '.m4a': 'audio/mp4' }[ext] || 'application/octet-stream';
+    const type = { '.mp4': 'video/mp4', '.webm': 'video/webm', '.png': 'image/png', '.jpg': 'image/jpeg', '.mov': 'video/quicktime', '.m4a': 'audio/mp4', '.wav': 'audio/wav' }[ext] || 'application/octet-stream';
     const range = request.headers.get('range');
     if (range) {
       const m = range.match(/bytes=(\d*)-(\d*)/);
@@ -459,49 +462,125 @@ ipcMain.handle('project:import', async () => {
 });
 
 // ---------- IPC: dışa aktarma ----------
-ipcMain.handle('export:start', async (e, id, project, assets, options) => {
+// Açılış/kapanış kareleri dışa aktarmadan önce tek tek yazılır.
+ipcMain.handle('export:frame', (e, id, kind, i, data) => {
+  if (!['intro', 'outro'].includes(kind)) return;
+  const d = path.join(projects.dirOf(id), 'export-' + kind);
+  if (i === 1) { fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true }); }
+  fs.writeFileSync(path.join(d, String(i).padStart(4, '0') + '.jpg'), Buffer.from(data));
+});
+
+function cleanExport(dir) {
+  for (const f of fs.readdirSync(dir)) {
+    if (/^export-/.test(f)) fs.rmSync(path.join(dir, f), { recursive: true, force: true });
+  }
+}
+
+ipcMain.handle('export:start', async (e, id, project, assets, options = {}) => {
   const dir = projects.dirOf(id);
   const videos = app.getPath('videos');
   const defaultDir = path.join(videos, 'Mimoza Sahne');
   fs.mkdirSync(defaultDir, { recursive: true });
-  const safe = String(project.name || 'video').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
+  const safe = String(project.name || 'video').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80) + (options.suffix || '');
   // MIMOZA_EXPORT_PATH yalnızca otomatik testlerde kayıt penceresini atlamak için kullanılır.
   const { canceled, filePath } = process.env.MIMOZA_EXPORT_PATH ? { canceled: false, filePath: process.env.MIMOZA_EXPORT_PATH } :
     await dialog.showSaveDialog(studio, {
       title: 'Videoyu kaydet', defaultPath: path.join(defaultDir, safe + '.mp4'), filters: [{ name: 'MP4 video', extensions: ['mp4'] }],
     });
-  if (canceled || !filePath) return { canceled: true };
-  const assetFiles = {};
-  for (const [k, dataUrl] of Object.entries(assets || {})) {
-    if (!dataUrl) continue;
-    const f = path.join(dir, 'export-' + k + '.png');
-    fs.writeFileSync(f, Buffer.from(dataUrl.split(',')[1], 'base64'));
-    assetFiles[k] = f;
+  if (canceled || !filePath) { cleanExport(dir); return { canceled: true }; }
+  const files = {};
+  const writePng = (name, dataUrl) => { fs.writeFileSync(path.join(dir, name), Buffer.from(dataUrl.split(',')[1], 'base64')); return name; };
+  for (const k of ['ring', 'click', 'mask']) if (assets[k]) files[k] = writePng('export-' + k + '.png', assets[k]);
+  files.overlays = (assets.overlays || []).map((o, i) => ({ file: writePng(`export-ov-${i + 1}.png`, o.dataUrl), el: o.el, box: o.box }));
+  if (assets.captions) {
+    fs.writeFileSync(path.join(dir, 'export-captions.ass'), assets.captions, 'utf8');
+    files.captions = 'export-captions.ass';
+    fs.mkdirSync(path.join(dir, 'export-fonts'), { recursive: true });
+    for (const f of fs.readdirSync(FONTS)) fs.copyFileSync(path.join(FONTS, f), path.join(dir, 'export-fonts', f));
   }
+  for (const k of ['intro', 'outro']) if (assets[k]) files[k] = { pattern: `export-${k}/%04d.jpg`, dur: assets[k].dur };
   const full = projects.load(id);
   full.edit = project.edit;
   full.name = project.name;
   exportAbort = new AbortController();
   const t0 = Date.now();
   try {
-    const r = await ff.exportVideo(full, dir, assetFiles, filePath, {
-      signal: exportAbort.signal, quality: options?.quality,
+    const r = await ff.exportVideo(full, dir, files, filePath, {
+      signal: exportAbort.signal, quality: options.quality, range: options.range || null,
       onProgress: (p, label) => e.sender.send('export:progress', { p, label }),
     });
-    return { file: filePath, encoder: r.encoder, seconds: (Date.now() - t0) / 1000 };
+    let srt = null;
+    if (options.srt) { srt = filePath.replace(/\.mp4$/i, '') + '.srt'; fs.writeFileSync(srt, '﻿' + options.srt, 'utf8'); }
+    return { file: filePath, srt, encoder: r.encoder, seconds: (Date.now() - t0) / 1000 };
   } catch (err) {
     try { fs.unlinkSync(filePath); } catch {}
     return { error: exportAbort.signal.aborted ? 'Dışa aktarma iptal edildi.' : err.message };
   } finally {
     exportAbort = null;
-    for (const f of Object.values(assetFiles)) { try { fs.unlinkSync(f); } catch {} }
+    cleanExport(dir);
   }
 });
 ipcMain.handle('export:cancel', () => exportAbort?.abort());
 
+// ---------- IPC: konuşma, temizlik, ses önizleme ----------
+let speechAbort = null;
+ipcMain.handle('speech:models', () => speech.modelStatus());
+ipcMain.handle('speech:transcribe', async (e, id, opts = {}) => {
+  if (speechAbort) throw new Error('Başka bir yazıya dökme işlemi sürüyor.');
+  speechAbort = new AbortController();
+  const blockId = powerSaveBlocker.start('prevent-app-suspension');
+  try {
+    const p = projects.load(id);
+    const transcript = await speech.transcribe(p, p.dir, {
+      lang: opts.lang, model: opts.model, signal: speechAbort.signal,
+      onProgress: pr => e.sender.send('speech:progress', pr),
+    });
+    const fresh = projects.load(id);
+    fresh.transcript = transcript;
+    projects.save(fresh);
+    return { transcript };
+  } catch (err) {
+    return { error: speechAbort?.signal.aborted ? 'İptal edildi.' : err.message };
+  } finally { speechAbort = null; powerSaveBlocker.stop(blockId); }
+});
+ipcMain.handle('speech:cancel', () => speechAbort?.abort());
+ipcMain.handle('speech:silences', async (e, id) => {
+  const p = projects.load(id);
+  if (p.silences) return p.silences;
+  const list = await speech.silences(p, p.dir);
+  const fresh = projects.load(id);
+  fresh.silences = list;
+  projects.save(fresh);
+  return list;
+});
+ipcMain.handle('audio:preview', async (e, id, project, range) => {
+  const dir = projects.dirOf(id);
+  const full = projects.load(id);
+  full.edit = project.edit;
+  const name = 'onizleme-ses.wav';
+  try {
+    await ff.audioPreview(full, dir, path.join(dir, name), range);
+    return { url: 'mimoza://media/' + encodeURIComponent(id) + '/' + name + '?v=' + Date.now() };
+  } catch (err) { return { error: err.message }; }
+});
+ipcMain.handle('srt:save', async (e, name, text) => {
+  const safe = String(name || 'altyazi').replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80);
+  const { canceled, filePath } = await dialog.showSaveDialog(studio, {
+    title: 'Altyazı dosyasını kaydet', defaultPath: path.join(app.getPath('videos'), 'Mimoza Sahne', safe + '.srt'), filters: [{ name: 'SRT altyazı', extensions: ['srt'] }],
+  });
+  if (canceled || !filePath) return null;
+  fs.writeFileSync(filePath, '\ufeff' + text, 'utf8');
+  return filePath;
+});
+
 // ---------- Uygulama ----------
 app.on('second-instance', showStudio);
 app.whenReady().then(() => {
+  speech.configure({
+    whisper: app.isPackaged ? path.join(process.resourcesPath, 'bin', 'whisper', 'whisper-cli.exe') : undefined,
+    models: path.join(app.getPath('userData'), 'modeller'),
+    fetch: (url, opts) => net.fetch(url, opts),
+  });
   setupProtocol();
   setupDisplayMedia();
   setupTray();

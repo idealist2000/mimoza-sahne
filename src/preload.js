@@ -45,7 +45,17 @@ contextBridge.exposeInMainWorld('mimoza', {
     onOpen: on('project:open'),
     onProcessing: on('processing'),
   },
+  speech: {
+    models: () => ipcRenderer.invoke('speech:models'),
+    transcribe: (id, opts) => ipcRenderer.invoke('speech:transcribe', id, opts),
+    cancel: () => ipcRenderer.invoke('speech:cancel'),
+    silences: id => ipcRenderer.invoke('speech:silences', id),
+    onProgress: on('speech:progress'),
+  },
+  audioPreview: (id, project, range) => ipcRenderer.invoke('audio:preview', id, project, range),
+  saveSrt: (name, text) => ipcRenderer.invoke('srt:save', name, text),
   exporter: {
+    frame: (id, kind, i, data) => ipcRenderer.invoke('export:frame', id, kind, i, data),
     start: (id, project, assets, options) => ipcRenderer.invoke('export:start', id, project, assets, options),
     cancel: () => ipcRenderer.invoke('export:cancel'),
     onProgress: on('export:progress'),

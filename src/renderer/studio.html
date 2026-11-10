@@ -9,7 +9,7 @@
 </head>
 <body>
 <header class="top">
-  <button class="brand ghost" id="go-home" title="Ana sayfa"><span class="logo"></span><span><b>Mimoza Sahne</b><small>MİMOZA BİLİŞİM</small></span></button>
+  <button class="brand ghost" id="go-home" title="Ana sayfa"><img class="logo-img" src="../assets/logo.png" alt=""><span><b>Mimoza Sahne</b><small>MİMOZA BİLİŞİM</small></span></button>
   <div class="top-mid" id="top-editor" hidden>
     <input type="text" id="project-name" maxlength="120" aria-label="Proje adı">
     <span class="save-state" id="save-state"></span>
@@ -106,7 +106,14 @@
 
 <!-- KURGU -->
 <main id="editor" class="view" hidden>
-  <aside class="tools scroll">
+  <aside class="tools">
+    <nav class="ltabs" id="ltabs">
+      <button data-tab="tools" aria-pressed="true">Araçlar</button>
+      <button data-tab="text" aria-pressed="false">Metin</button>
+      <button data-tab="clean" aria-pressed="false">Temizlik</button>
+      <button data-tab="brand" aria-pressed="false">Şablonlar</button>
+    </nav>
+    <div class="ltab scroll" id="tab-tools">
     <h3>Araçlar</h3>
     <button class="tool" id="t-split"><span></span>Böl<kbd>S</kbd></button>
     <button class="tool" id="t-delete"><span></span>Seçili parçayı sil<kbd>Del</kbd></button>
@@ -120,6 +127,12 @@
     <h3>Proje</h3>
     <button class="tool" id="t-folder"><span></span>Kayıt dosyalarını aç</button>
     <p class="muted small" id="capture-info"></p>
+    <h3>Kısa klip aralığı</h3>
+    <p class="muted small">Oynatma çizgisini getirip <kbd>I</kbd> ile başlangıcı, <kbd>O</kbd> ile bitişi seçin. Dışa aktarırken "Yalnızca seçili aralık" deyin.</p>
+    </div>
+    <div class="ltab scroll" id="tab-text" hidden></div>
+    <div class="ltab scroll" id="tab-clean" hidden></div>
+    <div class="ltab scroll" id="tab-brand" hidden></div>
   </aside>
   <section class="center">
     <div class="preview-wrap" id="preview-wrap">
@@ -179,6 +192,11 @@
         <label class="field">Çözünürlük<select id="ex-res"><option value="1080">1080p</option><option value="720">720p</option></select></label>
         <label class="field">Kalite<select id="ex-quality"><option value="normal">Standart (küçük dosya)</option><option value="high">Yüksek</option></select></label>
       </div>
+      <label class="field">Bölüm<select id="ex-range"><option value="all">Tüm video</option><option value="range">Yalnızca seçili aralık</option></select></label>
+      <div class="ex-checks">
+        <label class="check"><input type="checkbox" id="ex-captions"> Altyazıyı videoya göm</label>
+        <label class="check"><input type="checkbox" id="ex-srt"> Ayrıca SRT altyazı dosyası kaydet</label>
+      </div>
       <p class="muted" id="ex-summary"></p>
       <div class="modal-actions"><button class="ghost" id="ex-close">Vazgeç</button><button class="primary" id="ex-go">MP4 olarak kaydet</button></div>
     </div>
@@ -199,6 +217,10 @@
 <script src="../shared/timeline.js"></script>
 <script src="../shared/profiles.js"></script>
 <script src="studio.js"></script>
+<script src="../shared/captions.js"></script>
+<script src="../shared/cleanup.js"></script>
+<script src="../shared/templates.js"></script>
 <script src="editor.js"></script>
+<script src="panels.js"></script>
 </body>
 </html>

@@ -4,14 +4,15 @@ const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const T = require('../shared/timeline.js');
+const Templates = require('../shared/templates.js');
 
 let ffmpegPath = process.env.MIMOZA_FFMPEG || 'ffmpeg';
 function setFfmpegPath(p) { if (p) ffmpegPath = p; }
 function getFfmpegPath() { return ffmpegPath; }
 
-function run(args, { onStderr, onStdout, signal } = {}) {
+function run(args, { onStderr, onStdout, signal, cwd } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(ffmpegPath, ['-hide_banner', '-nostdin', ...args], { windowsHide: true });
+    const child = spawn(ffmpegPath, ['-hide_banner', '-nostdin', ...args], { windowsHide: true, cwd });
     let err = '';
     const out = [];
     child.stderr.on('data', d => { err += d; if (err.length > 200000) err = err.slice(-100000); onStderr?.(String(d)); });
@@ -110,13 +111,17 @@ async function detectEncoder() {
 }
 
 // ---------- Dışa aktarma ----------
-// project: proje verisi, dir: proje klasörü, assets: { ring, click, mask } PNG yolları
-function buildExport(project, dir, assets, outFile, encoder, quality) {
+// project: proje verisi, dir: proje klasörü
+// assets: { ring, click, mask, overlays: [{ file, el, box }], intro: { pattern, dur }, outro: { pattern, dur }, captions: 'dosya.ass' }
+// Filtre grafiğindeki dosyalar proje klasörüne göre görelidir (FFmpeg proje klasöründe çalışır).
+// opts: { quality, range: {s,e}, audioOnly }
+function buildExport(project, dir, assets, outFile, encoder, opts = {}) {
   const ed = project.edit;
   const media = project.media;
   const screen = media.screen;
   const srcDur = screen.duration;
-  const keep = T.normalizeKeep(ed.keep, srcDur);
+  const keep = T.clipKeep(T.normalizeKeep(ed.keep, srcDur), opts.range);
+  if (!keep.length) throw new Error('Dışa aktarılacak bölüm boş.');
   const outDur = T.outputDuration(keep);
   const { w: OW, h: OH } = T.outputSize(ed.output.aspect, ed.output.quality);
   const fps = 30;
@@ -130,24 +135,65 @@ function buildExport(project, dir, assets, outFile, encoder, quality) {
     args.push(...extra, '-i', path.isAbsolute(file) ? file : path.join(dir, file));
     return idx++;
   };
-  inputs.screen = addInput(screen.file, 0);
-  const cam = media.camera && ed.camera.visible ? media.camera : null;
-  if (cam) inputs.camera = addInput(cam.file, cam.offset || 0);
+  const audio = ed.audio || {};
+  const sel = keep.map(k => `between(t,${T.ffNum(k.s)},${T.ffNum(k.e)})`).join('+');
+  let n = 0;
+  const next = () => 'v' + (++n);
+
+  if (!opts.audioOnly) inputs.screen = addInput(screen.file, 0);
+
+  // ---------- Ses ----------
   const audioIns = [];
   for (const key of ['mic', 'system']) {
     const m = media[key];
     const tr = ed.tracks[key] || {};
     if (!m || tr.mute) continue;
-    const i = m.file === screen.file ? inputs.screen : addInput(m.file, m.offset || 0);
+    const i = !opts.audioOnly && m.file === screen.file ? inputs.screen : addInput(m.file, m.offset || 0);
     audioIns.push({ key, i, volume: tr.volume ?? 1 });
   }
+  let audioLabel = null;
+  if (audioIns.length) {
+    const mutes = ed.mutes || [];
+    const chain = {};
+    for (const a of audioIns) {
+      let f = `[${a.i}:a]aresample=48000:async=1:first_pts=0,aformat=channel_layouts=stereo`;
+      if (a.key === 'mic' && audio.denoise) f += ',highpass=f=80,afftdn=nr=14:nf=-32:tn=1';
+      f += `,volume=${T.ffNum(a.volume)}`;
+      for (const m of mutes) f += `,volume=0:enable='between(t,${T.ffNum(m.s)},${T.ffNum(m.e)})'`;
+      chain[a.key] = 'a_' + a.key;
+      filters.push(f + `[${chain[a.key]}]`);
+    }
+    // Konuşurken bilgisayar sesini kıs (mikrofon yan zincir olarak kullanılır)
+    if (audio.duck && chain.mic && chain.system) {
+      filters.push(`[${chain.mic}]asplit=2[a_micm][a_micsc]`);
+      filters.push(`[${chain.system}][a_micsc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=400:makeup=1[a_sysd]`);
+      chain.mic = 'a_micm';
+      chain.system = 'a_sysd';
+    }
+    const labels = Object.values(chain).map(l => `[${l}]`);
+    const mix = labels.length > 1 ? `${labels.join('')}amix=inputs=${labels.length}:duration=longest:normalize=0,` : `${labels[0]}anull,`;
+    let af = `${mix}apad,atrim=0:${T.ffNum(srcDur)},aselect='${sel}',asetpts=N/SR/TB`;
+    if (audio.normalize) af += ',loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000';
+    filters.push(af + '[amain]');
+    audioLabel = 'amain';
+  }
+
+  if (opts.audioOnly) {
+    if (!audioLabel) throw new Error('Bu projede ses yok.');
+    args.push('-filter_complex_script', 'export-graph.txt');
+    fs.writeFileSync(path.join(dir, 'export-graph.txt'), filters.join(';\n'));
+    args.push('-map', '[amain]', '-t', outDur.toFixed(3), '-c:a', 'pcm_s16le', outFile);
+    return { args, outDur, size: null };
+  }
+
+  // ---------- Görüntü ----------
+  const cam = media.camera && ed.camera.visible ? media.camera : null;
+  if (cam) inputs.camera = addInput(cam.file, cam.offset || 0);
   const cursor = project.cursorData;
   const useCursor = cursor && project.capture.kind !== 'window' && project.capture.kind !== 'import';
-  if (useCursor && ed.cursor.highlight) inputs.ring = addInput(assets.ring, 0, ['-loop', '1', '-framerate', String(fps)]);
-  if (useCursor && ed.cursor.clicks && cursor.clicks.length) inputs.click = addInput(assets.click, 0, ['-loop', '1', '-framerate', String(fps)]);
-  if (cam && assets.mask) inputs.mask = addInput(assets.mask, 0, ['-loop', '1', '-framerate', String(fps)]);
+  if (useCursor && ed.cursor.highlight) inputs.ring = addInput(assets.ring, 0, ['-loop', '1', '-framerate', String(fps), '-t', T.ffNum(srcDur + 0.5)]);
+  if (useCursor && ed.cursor.clicks && cursor.clicks.length) inputs.click = addInput(assets.click, 0, ['-loop', '1', '-framerate', String(fps), '-t', T.ffNum(srcDur + 0.5)]);
 
-  // Ekran katmanı
   const region = project.capture.region;
   let SW = screen.width, SH = screen.height;
   let v = `[${inputs.screen}:v]fps=${fps},setpts=PTS-STARTPTS`;
@@ -160,11 +206,8 @@ function buildExport(project, dir, assets, outFile, encoder, quality) {
   v += ',format=yuv420p[scr0]';
   filters.push(v);
   let cur = 'scr0';
-  let n = 0;
-  const next = () => 'v' + (++n);
 
   // İmleç halkası (sendcmd ile konum güncellenir)
-  let cmdFile = null;
   if (inputs.ring !== undefined || inputs.click !== undefined) {
     const ringSize = Math.round(Math.min(SW, SH) * 0.055 * (ed.cursor.size || 1) / 2) * 2;
     const clickSize = Math.round(ringSize * 1.6 / 2) * 2;
@@ -187,11 +230,9 @@ function buildExport(project, dir, assets, outFile, encoder, quality) {
       }
     }
     lines.sort((a, b) => parseFloat(a) - parseFloat(b));
-    cmdFile = path.join(dir, 'export-cursor.cmd');
-    fs.writeFileSync(cmdFile, lines.join('\n') + '\n');
-    const sc = cmdFile.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'");
+    fs.writeFileSync(path.join(dir, 'export-cursor.cmd'), (lines.join('\n') || '0.0 overlay@ring x -1000;') + '\n');
     const o = next();
-    filters.push(`[${cur}]sendcmd=f='${sc}'[${o}]`);
+    filters.push(`[${cur}]sendcmd=f=export-cursor.cmd[${o}]`);
     cur = o;
     if (inputs.ring !== undefined) {
       const r = next(), o2 = next();
@@ -231,26 +272,28 @@ function buildExport(project, dir, assets, outFile, encoder, quality) {
   }
 
   // Çıktı karesine yerleştir
-  const pad = ed.output.aspect === '16:9' ? 0 : Math.round(Math.min(OW, OH) * 0.03);
-  const fit = T.fitRect(SW, SH, OW, OH, pad);
+  const L = T.layoutRects(ed, OW, OH, SW, SH, !!cam);
   {
     const o = next();
     const bg = (ed.output.bg || '#101418').replace('#', '0x');
-    filters.push(`[${cur}]scale=${fit.w}:${fit.h}:flags=lanczos,pad=${OW}:${OH}:${fit.x}:${fit.y}:color=${bg}[${o}]`);
+    const f = L.screen;
+    filters.push(`[${cur}]scale=${f.w}:${f.h}:flags=lanczos,pad=${OW}:${OH}:${f.x}:${f.y}:color=${bg},setsar=1[${o}]`);
     cur = o;
   }
 
   // Kamera
   if (cam) {
     const camAspect = cam.width && cam.height ? cam.width / cam.height : 16 / 9;
-    const r = T.cameraRect(ed.camera, OW, OH, camAspect);
+    const r = L.split ? L.cam : T.cameraRect(ed.camera, OW, OH, camAspect);
+    const shape = L.split ? 'rect' : ed.camera.shape;
     const c1 = next(), o = next();
     let cf = `[${inputs.camera}:v]fps=${fps},`;
-    cf += ed.camera.shape === 'rect' ? `scale=${r.w}:${r.h}:force_original_aspect_ratio=increase,crop=${r.w}:${r.h}` :
+    cf += shape === 'rect' ? `scale=${r.w}:${r.h}:force_original_aspect_ratio=increase,crop=${r.w}:${r.h}` :
       `crop='min(iw,ih)':'min(iw,ih)',scale=${r.w}:${r.h}`;
     if (ed.camera.mirror) cf += ',hflip';
     cf += ',format=rgba';
-    if (inputs.mask !== undefined) {
+    if (!L.split && assets.mask) {
+      inputs.mask = addInput(assets.mask, 0, ['-loop', '1', '-framerate', String(fps), '-t', T.ffNum(srcDur + 0.5)]);
       const m = next(), mm = next();
       filters.push(`[${inputs.mask}:v]scale=${r.w}:${r.h},format=gray[${m}]`);
       filters.push(cf + `[${mm}]`);
@@ -260,40 +303,68 @@ function buildExport(project, dir, assets, outFile, encoder, quality) {
     cur = o;
   }
 
-  // Kesimler
-  const sel = keep.map(k => `between(t,${T.ffNum(k.s)},${T.ffNum(k.e)})`).join('+');
-  filters.push(`[${cur}]select='${sel}',setpts=N/FRAME_RATE/TB,format=${encoder.pix}[vout]`);
-
-  // Ses
-  const mutes = ed.mutes || [];
-  if (audioIns.length) {
-    const labels = [];
-    for (const a of audioIns) {
-      const l = 'a_' + a.key;
-      let f = `[${a.i}:a]aresample=48000:async=1:first_pts=0,aformat=channel_layouts=stereo,volume=${T.ffNum(a.volume)}`;
-      for (const m of mutes) f += `,volume=0:enable='between(t,${T.ffNum(m.s)},${T.ffNum(m.e)})'`;
-      filters.push(f + `[${l}]`);
-      labels.push(`[${l}]`);
-    }
-    const mix = labels.length > 1 ? `${labels.join('')}amix=inputs=${labels.length}:duration=longest:normalize=0,` : `${labels[0]}`;
-    filters.push(`${mix}${labels.length > 1 ? '' : 'anull,'}apad,atrim=0:${T.ffNum(srcDur)},aselect='${sel}',asetpts=N/SR/TB[aout]`);
+  // Şablon katmanları (alt bant, başlık, bölüm, köşe)
+  for (const ov of assets.overlays || []) {
+    const i = addInput(ov.file, 0, ['-loop', '1', '-framerate', String(fps), '-t', T.ffNum(srcDur + 0.5)]);
+    const an = Templates.ffAnim(ov.el, ov.box.x, ov.box.slide);
+    const a = next(), o = next();
+    filters.push(`[${i}:v]format=rgba,fade=t=in:st=${T.ffNum(an.inStart)}:d=${T.ffNum(an.inDur)}:alpha=1,fade=t=out:st=${T.ffNum(an.outStart)}:d=${T.ffNum(an.outDur)}:alpha=1[${a}]`);
+    filters.push(`[${cur}][${a}]overlay=x='${an.x}':y=${ov.box.y}:eval=frame:shortest=0:eof_action=pass:enable='between(t,${T.ffNum(ov.el.s)},${T.ffNum(ov.el.e)})'[${o}]`);
+    cur = o;
   }
 
-  args.push('-filter_complex_script', path.join(dir, 'export-graph.txt'));
+  // Altyazı (libass)
+  if (assets.captions) {
+    const o = next();
+    filters.push(`[${cur}]subtitles=filename=${assets.captions}:fontsdir=export-fonts[${o}]`);
+    cur = o;
+  }
+
+  // Kesimler
+  filters.push(`[${cur}]select='${sel}',setpts=N/FRAME_RATE/TB,format=${encoder.pix}[vmain]`);
+
+  // Açılış ve kapanış
+  const parts = [];
+  const silent = d => {
+    const l = 'sil' + parts.length;
+    filters.push(`anullsrc=r=48000:cl=stereo,atrim=0:${T.ffNum(d)}[${l}]`);
+    return l;
+  };
+  const card = (c, name) => {
+    const i = addInput(c.pattern, 0, ['-framerate', String(fps)]);
+    filters.push(`[${i}:v]scale=${OW}:${OH},setsar=1,fps=${fps},format=${encoder.pix}[${name}]`);
+    parts.push({ v: name, a: audioLabel ? silent(c.dur) : null });
+  };
+  if (assets.intro) card(assets.intro, 'vintro');
+  parts.push({ v: 'vmain', a: audioLabel });
+  if (assets.outro) card(assets.outro, 'voutro');
+  let total = outDur + (assets.intro?.dur || 0) + (assets.outro?.dur || 0);
+  let vOut = 'vmain', aOut = audioLabel;
+  if (parts.length > 1) {
+    const ins = parts.map(p => `[${p.v}]` + (audioLabel ? `[${p.a}]` : '')).join('');
+    filters.push(`${ins}concat=n=${parts.length}:v=1:a=${audioLabel ? 1 : 0}[vout]` + (audioLabel ? '[aout]' : ''));
+    vOut = 'vout';
+    aOut = audioLabel ? 'aout' : null;
+  }
+
+  args.push('-filter_complex_script', 'export-graph.txt');
   fs.writeFileSync(path.join(dir, 'export-graph.txt'), filters.join(';\n'));
-  args.push('-map', '[vout]');
-  if (audioIns.length) args.push('-map', '[aout]', '-c:a', 'aac', '-b:a', '160k');
-  const q = quality === 'high' ? 20 : 24;
-  args.push(...encoder.args(q), '-r', String(fps), '-t', outDur.toFixed(3), '-movflags', '+faststart', outFile);
-  return { args, outDur, size: { w: OW, h: OH } };
+  args.push('-map', `[${vOut}]`);
+  if (aOut) args.push('-map', `[${aOut}]`, '-c:a', 'aac', '-b:a', '160k');
+  const q = opts.quality === 'high' ? 20 : 24;
+  args.push(...encoder.args(q), '-r', String(fps), '-t', total.toFixed(3), '-movflags', '+faststart', outFile);
+  return { args, outDur: total, size: { w: OW, h: OH } };
 }
 
-async function exportVideo(project, dir, assets, outFile, { onProgress, signal, quality } = {}) {
+const TEMP = ['export-graph.txt', 'export-cursor.cmd'];
+function cleanTemp(dir) { for (const f of TEMP) { try { fs.unlinkSync(path.join(dir, f)); } catch {} } }
+
+async function exportVideo(project, dir, assets, outFile, { onProgress, signal, quality, range } = {}) {
   let encoder = await detectEncoder();
   const attempt = async enc => {
-    const { args, outDur } = buildExport(project, dir, assets, outFile, enc, quality);
+    const { args, outDur } = buildExport(project, dir, assets, outFile, enc, { quality, range });
     await run(['-progress', 'pipe:1', '-nostats', ...args], {
-      signal,
+      signal, cwd: dir,
       onStdout: d => {
         const m = String(d).match(/out_time_us=(\d+)/g);
         if (m) {
@@ -306,15 +377,22 @@ async function exportVideo(project, dir, assets, outFile, { onProgress, signal, 
   try {
     await attempt(encoder);
   } catch (e) {
-    if (signal?.aborted || encoder.name === 'libx264') throw e;
+    if (signal?.aborted || encoder.name === 'libx264') { cleanTemp(dir); throw e; }
     // Donanım kodlayıcı başarısız olursa işlemciyle tekrar dene.
     encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2)], pix: 'yuv420p' };
     encoder = encoderCache;
-    await attempt(encoder);
+    try { await attempt(encoder); } finally { cleanTemp(dir); }
   }
+  cleanTemp(dir);
   onProgress?.(1, encoder.label);
-  for (const f of ['export-graph.txt', 'export-cursor.cmd']) { try { fs.unlinkSync(path.join(dir, f)); } catch {} }
   return { encoder: encoder.label };
 }
 
-module.exports = { setFfmpegPath, getFfmpegPath, run, probe, finalizeRecording, audioPeaks, thumbnail, detectEncoder, buildExport, exportVideo };
+// İşlenmiş sesin kısa önizlemesi (gürültü azaltma, dengeleme, kısma)
+async function audioPreview(project, dir, outFile, range) {
+  const { args } = buildExport(project, dir, {}, outFile, null, { audioOnly: true, range });
+  try { await run(args, { cwd: dir }); } finally { cleanTemp(dir); }
+  return outFile;
+}
+
+module.exports = { setFfmpegPath, getFfmpegPath, run, probe, finalizeRecording, audioPeaks, thumbnail, detectEncoder, buildExport, exportVideo, audioPreview };
