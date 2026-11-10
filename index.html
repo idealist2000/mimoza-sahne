@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/style.css">
 <script type="module" src="/app.js"></script>
 <script type="module" src="/capture.js"></script>
+<script type="module" src="/publish.js"></script>
 </head>
 <body>
 <header><span>MİMOZA BİLİŞİM / VİDEO ATÖLYESİ</span><h1>Mimoza Sahne</h1><p>Konuşmanızdaki önemli anları hareketli başlıklarla öne çıkarın.</p></header>
@@ -22,15 +23,48 @@
 </fieldset>
 <canvas id="capture-preview" width="1280" height="720" hidden aria-label="Kayıt önizlemesi"></canvas>
 <button id="record-start">Kaydı başlat</button>
-<button id="record-stop" disabled>Kaydı bitir</button>
+<button id="record-pause" disabled>Duraklat (Alt+P)</button><button id="record-stop" disabled>Kaydı bitir (Alt+D)</button><button id="studio-full">Stüdyoyu tam ekran aç</button>
+<details>
+<summary>YouTube canlı yayın (FFmpeg gerekir)</summary>
+<p>YouTube Studio’da otomatik başlatmayı kapatın. Önce yerel kaydı başlatın, sonra sinyali gönderin ve yayın önizlemesini YouTube Studio’da kontrol edin.</p>
+<label>Yayın anahtarı <input id="live-key" type="password" autocomplete="off" maxlength="128"></label>
+<button id="live-start">YouTube’a sinyal gönder</button>
+<button id="live-stop" disabled>Yayın sinyalini kes</button>
+<p id="live-status" role="status"></p>
+</details>
 <p id="record-status" role="status">İsterseniz aşağıdan hazır video da ekleyebilirsiniz.</p>
 </section>
+<section id="lesson">
+<h2>Akıllı tahta ve ders profilleri</h2>
+<div class="range">
+<label>Ders profili <select id="lesson-profile"></select></label>
+<label>Sahne <select id="lesson-scene"><option value="lesson">Ders</option><option value="waiting">Bekleme</option><option value="questions">Soru-cevap</option><option value="privacy">Gizlilik</option><option value="closing">Kapanış</option></select></label>
+</div>
+<p>Aktif sahne <strong id="lesson-state">Ders</strong></p>
+<label id="lesson-card-label">Kart <input id="lesson-card"></label>
+<button id="lesson-card-toggle" aria-pressed="false">Kartı göster / gizle</button>
+<button id="lesson-privacy">Gizlilik sahnesi (Alt+G)</button>
+<div class="range">
+<label><input id="lesson-draw" type="checkbox"> Önizlemeye çiz</label>
+<label><input id="lesson-temporary" type="checkbox"> Geçici işaret</label>
+<label>Araç <select id="lesson-ink"><option value="pen">Kalem</option><option value="highlight">Fosforlu kalem</option><option value="arrow">Ok</option><option value="box">Kutu</option><option value="eraser">Silgi</option></select></label>
+<label>Renk <input id="lesson-color" type="color" value="#ffdb70"></label>
+</div>
+<button id="lesson-undo">Son çizgiyi geri al</button>
+<button id="lesson-clear">Tahtayı temizle (Alt+T)</button>
+<label>Bölüm adı <input id="lesson-marker-name" maxlength="80"></label>
+<button id="lesson-mark">İşaret koy (Alt+B)</button>
+<p id="lesson-status" role="status">Çizimler kayıt önizlemesi üzerinden yapılır.</p>
+</section>
+
 <main id="editor">
 <section>
 <h2>1. Videoyu ve metni ekleyin</h2>
 <label>Video <input id="file" type="file" accept="video/*"></label>
 <label>SRT altyazı dosyası <input id="srt" type="file" accept=".srt"></label>
 <label>Konuşma metni veya SRT <textarea id="script" rows="7" placeholder="SRT yükleyin veya konuşma metnini buraya yapıştırın. Düz metinde her satır video süresine eşit dağıtılır."></textarea></label>
+<label>Otomatik altyazı dili <select id="caption-language"><option value="tr">Türkçe</option><option value="en">İngilizce</option><option value="auto">Otomatik</option></select></label>
+<button id="caption-auto">Yerel altyazı üret</button>
 <button id="quick">Hızlı plan</button>
 <details><summary>Ollama ile yapay zekâ planı</summary>
 <label>Yüklü yerel model adı <input id="model" placeholder="Ollama listesinde görünen model adı"></label>
@@ -53,14 +87,54 @@
 <label>Kesit başlangıcı (sn) <input id="trim-start" type="number" min="0" step="0.01" value="0"></label>
 <label>Kesit bitişi (sn) <input id="trim-end" type="number" min="0" step="0.01" placeholder="Video sonu"></label>
 </div>
-<button id="export">Videoyu indir</button>
+<button id="download-source" disabled>Kaynağı hemen indir</button>
+<button id="export">Düzenlenmiş videoyu indir</button>
+<p class="hint">Hızlı indirme, hazır dosyayı kullanır. Sonradan eklenen başlıklar, kesit ve boyut için düzenlenmiş videoyu indirin.</p>
 <button id="poster">Geçerli kareyi PNG indir</button>
 <button id="cancel" hidden>İptal</button>
 <p id="status" role="status">Başlamak için bir video seçin.</p>
 </section>
 </main>
+<section id="publish">
+<h2>YouTube yayın hazırlığı</h2>
+<label>Video konusu <input id="publish-topic" maxlength="200"></label>
+<button id="publish-local">Ücretsiz taslak oluştur</button>
+<details>
+<summary>Yapay zekâ ile taslak</summary>
+<label>Sağlayıcı <select id="publish-provider"><option value="ollama">Ollama (yerel)</option><option value="openai">OpenAI</option><option value="claude">Claude</option><option value="gemini">Gemini</option><option value="you">You.com Answer API</option></select></label>
+<label>Model adı (You.com için boş bırakın) <input id="publish-model" maxlength="120"></label>
+<label>API anahtarı (Ollama için boş bırakın) <input id="publish-key" type="password" autocomplete="off" maxlength="512"></label>
+<label><input id="publish-share" type="checkbox"> Konu ve konuşma metnini seçtiğim bulut sağlayıcısına gönder</label>
+<button id="publish-ai">Yapay zekâ taslağı oluştur</button>
+</details>
+<label>Başlık, kapak, açıklama, bölüm ve etiket taslağı <textarea id="publish-draft" rows="13"></textarea></label>
+<button id="publish-copy">Taslağı kopyala</button>
+<a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer">YouTube Studio’yu aç</a>
+<details>
+<summary>Kanal bağlantısı ve gizli video yükleme</summary>
+<p id="youtube-channel">Kanal bilgisi alınmadı.</p>
+<button id="youtube-connect">Google ile kanalı bağla</button>
+<button id="youtube-check">Bağlantıyı kontrol et</button>
+<button id="youtube-disconnect">Bağlantıyı kaldır</button>
+<label>Yüklenecek MP4 veya WebM <input id="youtube-file" type="file" accept="video/mp4,video/webm"></label>
+<label>Son başlık <input id="youtube-title" maxlength="100"></label>
+<label>Son açıklama <textarea id="youtube-description" maxlength="5000" rows="5"></textarea></label>
+<label>Etiketler (virgülle ayırın) <input id="youtube-tags" maxlength="400"></label>
+<label>Video dili <select id="youtube-language"><option value="tr">Türkçe</option><option value="en">İngilizce</option></select></label>
+<label>Hedef kitle <select id="youtube-kids"><option value="">Seçin</option><option value="no">Çocuklara özel değil</option><option value="yes">Çocuklara özel</option></select></label>
+<button id="youtube-upload">Kanalıma gizli yükle</button>
+<a id="youtube-result" target="_blank" rel="noopener noreferrer" hidden>Yüklenen videoyu Studio’da aç</a>
+<p id="youtube-status" role="status"></p>
+</details>
+<p id="publish-status" role="status">Taslakta kullandığınız metin ve bölüm işaretleri bu projeden alınır.</p>
+</section>
+
 </body>
 </html>
+
+
+
+
 
 
 

@@ -28,3 +28,10 @@ video { height: 46px; margin: 10px 0; }
 [hidden] { display: none !important; }
 .range { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 select { display: block; width: 100%; padding: 8px; margin-top: 4px; font: inherit; }
+#lesson { margin: 20px 0; }
+#lesson input[type=checkbox] { display: inline; width: auto; }
+#capture-preview { max-width: 100%; touch-action: none; }
+#publish { margin: 20px 0; }
+#publish input[type=checkbox] { display: inline; width: auto; }
+#publish a { color: #ffdb70; margin-left: 10px; }
+.hint { color: #c3c8dc; font-size: .88rem; }

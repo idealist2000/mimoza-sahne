@@ -5,6 +5,7 @@ const ctx = canvas.getContext('2d');
 const status = message => { $('status').textContent = message; };
 let scenes = [];
 let sourceUrl;
+let sourceFile;
 let audio;
 let audioSource;
 let recorder;
@@ -16,7 +17,7 @@ const duration = () => Number.isFinite(video.duration) ? video.duration : record
 function setBusy(value) {
   busy = value;
   document.querySelectorAll('#editor input, #editor textarea, #editor select, #editor button:not(#cancel)').forEach(control => {
-    control.disabled = value;
+    control.disabled = value || (control.id === 'download-source' && !sourceFile);
   });
 }
 
@@ -25,6 +26,8 @@ document.addEventListener('mimoza-recorded', event => loadVideo(event.detail.fil
 function loadVideo(file, length) {
   if (!file) return;
   if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+  sourceFile = file;
+  $('download-source').disabled = false;
   sourceUrl = URL.createObjectURL(file);
   recordedDuration = length;
   $('trim-start').value = '0';
@@ -208,6 +211,12 @@ function download(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
+$('download-source').onclick = () => {
+  if (!sourceFile) return status('Önce bir video kaydedin veya yükleyin.');
+  download(sourceFile, sourceFile.name || 'mimoza-kayit.webm');
+  status('Kaynak dosya yeniden işlenmeden indirmeye gönderildi.');
+};
+
 $('poster').onclick = () => {
   if (video.readyState < 2) return status('Önce bir video yükleyin.');
   draw();
@@ -316,4 +325,22 @@ $('export').onclick = async () => {
 
 
 
+
+
+
+$('caption-auto').onclick = async () => {
+  if (!sourceFile) return status('Önce bir video kaydedin veya yükleyin.');
+  setBusy(true);
+  status('Yerel altyazı hazırlanıyor…');
+  try {
+    const response = await fetch('/transcribe', {
+      method: 'POST', headers: { 'x-mimoza-language': $('caption-language').value }, body: sourceFile,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    $('script').value = data.srt;
+    status('Altyazı hazır. Metni kontrol edip başlık oluşturabilirsiniz.');
+  } catch (error) { status(error.message); }
+  finally { setBusy(false); }
+};
 

@@ -1,12 +1,20 @@
+import { youtube } from './youtube.mjs';
+import { generateDraft } from './ai-draft.mjs';
+import { transcribe } from './transcribe.mjs';
+import { live } from './live.mjs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 
-const port = 4178;
+const port = Number(process.env.MIMOZA_PORT || 4178);
+if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('MIMOZA_PORT geçersiz.');
 const origin = 'http://127.0.0.1:' + port;
 const files = new Map([
   ['/', ['index.html', 'text/html']],
   ['/app.js', ['app.js', 'text/javascript']],
+  ['/publish.js', ['publish.js', 'text/javascript']],
+  ['/lesson.js', ['lesson.js', 'text/javascript']],
+  ['/profiles.js', ['profiles.js', 'text/javascript']],
   ['/capture.js', ['capture.js', 'text/javascript']],
   ['/style.css', ['style.css', 'text/css']],
 ]);
@@ -26,7 +34,23 @@ createServer(async (req, res) => {
       return json(500, { error: 'Uygulama dosyası okunamadı.' });
     }
   }
-  if (req.method !== 'POST' || req.url !== '/plan') return json(404, { error: 'Sayfa bulunamadı.' });
+  if (req.url?.startsWith('/youtube/')) {
+    const url = new URL(req.url, origin);
+    return youtube(req, url, send, json, origin, async request => {
+      let body = '';
+      for await (const chunk of request.setEncoding('utf8')) {
+        body += chunk;
+        if (body.length > 10000) throw new Error('Yayın bilgileri çok uzun.');
+      }
+      return JSON.parse(body);
+    });
+  }
+  if (req.url?.startsWith('/live/')) return live(req, json, origin);
+  if (req.url === '/transcribe') {
+    if (req.method !== 'POST' || req.headers.origin !== origin) return json(403, { error: 'Geçersiz altyazı isteği.' });
+    return transcribe(req, json);
+  }
+  if (req.method !== 'POST' || !['/plan', '/draft'].includes(req.url)) return json(404, { error: 'Sayfa bulunamadı.' });
   if (req.headers.origin !== origin || req.headers['content-type'] !== 'application/json') {
     return json(403, { error: 'Geçersiz istek.' });
   }
@@ -37,6 +61,13 @@ createServer(async (req, res) => {
   }
   let input;
   try { input = JSON.parse(body); } catch { return json(400, { error: 'İstek okunamadı.' }); }
+  if (req.url === '/draft') {
+    try {
+      return json(200, { draft: await generateDraft(input ?? {}) });
+    } catch (error) {
+      return json(422, { error: error.message || 'Taslak hazırlanamadı.' });
+    }
+  }
   if (!input || typeof input.model !== 'string' || !/^[\w.:/-]{1,100}$/.test(input.model) ||
       input.model.includes('/') || !Array.isArray(input.cues) || input.cues.length < 1 || input.cues.length > 120 ||
       input.cues.some(cue => typeof cue !== 'string' || cue.length > 500)) {
@@ -88,6 +119,10 @@ createServer(async (req, res) => {
     }).on('error', () => {});
   }
 });
+
+
+
+
 
 
 
