@@ -245,7 +245,7 @@
     const lang = el('select', {}, new Option('Türkçe', 'tr'), new Option('İngilizce', 'en'), new Option('Otomatik algıla', 'auto'));
     lang.value = st.sttLang || 'tr';
     const model = el('select', {}, ...Object.entries(models).map(([k, m]) => new Option(`${m.label} (${m.mb} MB${m.ready ? ', hazır' : ', ilk kullanımda iner'})`, k)));
-    model.value = st.sttModel || 'small';
+    model.value = st.sttModel || (st.lightMode ? 'base' : 'small');
     const go = el('button', { className: 'primary wide', innerHTML: icon('magic') + 'Altyazı oluştur' });
     const bar = el('div', { className: 'bar' }, el('i'));
     const phase = h('muted small', '');
@@ -279,7 +279,7 @@
       h('muted small', 'Konuşmanız bu bilgisayarda yazıya dökülür; ses internete gönderilmez. Model ilk kullanımda bir kez indirilir.'),
       el('label', { className: 'field' }, 'Konuşma dili', lang),
       el('label', { className: 'field' }, 'Doğruluk', model),
-      h('muted small', '"Doğru" seçeneği Türkçede daha az hata yapar. 10 dakikalık video için birkaç dakika sürebilir.'),
+      h('muted small', '"Doğru" seçeneği Türkçede daha az hata yapar ama yaklaşık 1 GB bellek kullanır. 10 dakikalık video için birkaç dakika sürebilir.' + (st.lightMode ? ' Hafif mod açık: altyazı 2 çekirdekle, daha yavaş ama bilgisayarı yormadan çalışır.' : '')),
       go, prog,
     );
   }

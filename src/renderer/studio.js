@@ -33,6 +33,8 @@ $('ic-cam').innerHTML = icon('camera');
 $('ic-mic').innerHTML = icon('mic');
 $('ic-gear').innerHTML = icon('gear');
 $('ic-card').innerHTML = icon('card');
+$('ic-sys').innerHTML = icon('gear');
+$('sys-refresh').innerHTML = icon('redo');
 const kindLabels = { screen: ['screen', 'Tüm ekran'], region: ['region', 'Alan seç'], window: ['window', 'Pencere'] };
 for (const b of $('kind-tabs').querySelectorAll('button')) b.innerHTML = icon(kindLabels[b.dataset.kind][0]) + kindLabels[b.dataset.kind][1];
 
@@ -101,9 +103,41 @@ const Setup = {
     $('profile').value = s.profile || 'ai';
     $('cards').value = s.cards || '';
     this.profileChanged();
+    this.checkSystem(true);
     await this.devices(s);
     await this.loadSources();
     this.setKind(this.kind);
+  },
+
+  // Bellek durumu ve hafif mod
+  async checkSystem(applyDefault) {
+    const st = await api.sysStatus(true);
+    const settings = await api.settings.get();
+    this.sys = st;
+    const mem = document.querySelector('#sys-card .mem');
+    mem.className = 'mem ' + st.level;
+    $('mem-fill').style.width = st.usedPct + '%';
+    $('mem-text').textContent = `Bellek: %${st.usedPct} dolu · boş ${String(st.freeGB).replace('.', ',')} GB / ${String(st.totalGB).replace('.', ',')} GB`;
+    const msg = $('sys-msg');
+    msg.className = 'small ' + st.level;
+    msg.textContent = st.level === 'critical' ? 'Boş bellek çok az. Kayıt bilgisayarı dondurabilir. Aşağıdaki programlardan kullanmadıklarınızı kapatın.' :
+      st.level === 'low' ? 'Bellek sınırda. Hafif mod önerilir; kullanmadığınız programları kapatmak da yardımcı olur.' : 'Bellek yeterli.';
+    $('sys-apps').replaceChildren(...st.apps.map(a => {
+      const d = document.createElement('div');
+      d.innerHTML = `<b>${esc(a.name)}</b><span>${a.mb >= 1024 ? (a.mb / 1024).toFixed(1).replace('.', ',') + ' GB' : a.mb + ' MB'}</span>`;
+      return d;
+    }));
+    if (applyDefault) {
+      const light = settings.lightMode ?? st.light;
+      $('light-mode').checked = !!light;
+      this.applyLight(false);
+    }
+  },
+  applyLight(save = true) {
+    const on = $('light-mode').checked;
+    $('quality').disabled = on;
+    if (on) $('quality').value = '720';
+    if (save) api.settings.set({ lightMode: on });
   },
 
   profileChanged() {
@@ -239,14 +273,17 @@ const Setup = {
 
   async start() {
     if ($('start-recording').disabled) return;
+    const st = await api.sysStatus(false);
+    if (st.level === 'critical' && !confirm(`Boş bellek yalnızca ${String(st.freeGB).replace('.', ',')} GB. Kayıt bilgisayarı dondurabilir.\n\nKullanmadığınız programları kapatıp tekrar denemeniz önerilir. Yine de başlatılsın mı?`)) return;
     const src = this.sources.find(s => s.id === this.sourceId);
     const config = {
       kind: this.kind, sourceId: this.sourceId, sourceName: src?.name, displayId: src?.displayId,
       region: this.kind === 'region' ? this.region : null,
       cameraId: $('camera-select').value || null, micId: $('mic-select').value || null,
       system: $('system-audio').checked, quality: +$('quality').value, autoZoom: $('auto-zoom').checked,
-      profile: $('profile').value, cards: $('cards').value,
+      profile: $('profile').value, cards: $('cards').value, light: $('light-mode').checked,
     };
+    if (config.light) config.quality = 720;
     this.stopPreviews();
     try { await api.rec.prepare(config); }
     catch (e) { alert(e.message); }
@@ -260,6 +297,8 @@ $('pick-region').onclick = () => Setup.pickRegion();
 $('camera-select').onchange = () => Setup.previewCamera();
 $('mic-select').onchange = () => Setup.previewMic();
 $('profile').onchange = () => Setup.profileChanged();
+$('light-mode').onchange = () => Setup.applyLight(true);
+$('sys-refresh').onclick = () => Setup.checkSystem(false);
 $('setup-back').onclick = () => App.show('home');
 $('start-recording').onclick = () => Setup.start();
 

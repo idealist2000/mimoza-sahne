@@ -9,6 +9,7 @@ const on = channel => fn => {
 
 contextBridge.exposeInMainWorld('mimoza', {
   info: () => ipcRenderer.invoke('app:info'),
+  sysStatus: withApps => ipcRenderer.invoke('sys:status', withApps),
   settings: { get: () => ipcRenderer.invoke('settings:get'), set: patch => ipcRenderer.invoke('settings:set', patch) },
   encoder: () => ipcRenderer.invoke('encoder:detect'),
   showInFolder: p => ipcRenderer.invoke('shell:show', p),

@@ -8,6 +8,7 @@ const ff = require('./ffmpeg.js');
 const projects = require('./projects.js');
 const inputLog = require('./input-log.js');
 const speech = require('./speech.js');
+const sysinfo = require('./sysinfo.js');
 const { net } = require('electron');
 const T = require('../shared/timeline.js');
 
@@ -221,6 +222,10 @@ function setupDisplayMedia() {
 // ---------- IPC: genel ----------
 ipcMain.handle('settings:get', () => readSettings());
 ipcMain.handle('settings:set', (e, patch) => writeSettings(patch));
+ipcMain.handle('sys:status', async (e, withApps) => {
+  const m = sysinfo.memory();
+  return { ...m, ...sysinfo.recommendation(m), apps: withApps ? await sysinfo.heavyApps() : [] };
+});
 ipcMain.handle('app:info', async () => ({ version: app.getVersion(), hook: inputLog.available(), platform: process.platform, shortcuts: SHORTCUTS }));
 ipcMain.handle('encoder:detect', async () => { try { return (await ff.detectEncoder()).label; } catch (e) { return 'FFmpeg bulunamadı: ' + e.message; } });
 ipcMain.handle('shell:show', (e, p) => { if (p && fs.existsSync(p)) shell.showItemInFolder(p); });
@@ -517,7 +522,7 @@ ipcMain.handle('export:start', async (e, id, project, assets, options = {}) => {
   const t0 = Date.now();
   try {
     const r = await ff.exportVideo(full, dir, files, filePath, {
-      signal: exportAbort.signal, quality: options.quality, range: options.range || null,
+      signal: exportAbort.signal, quality: options.quality, range: options.range || null, light: !!readSettings().lightMode,
       onProgress: (p, label) => e.sender.send('export:progress', { p, label }),
     });
     let srt = null;
@@ -543,7 +548,7 @@ ipcMain.handle('speech:transcribe', async (e, id, opts = {}) => {
   try {
     const p = projects.load(id);
     const transcript = await speech.transcribe(p, p.dir, {
-      lang: opts.lang, model: opts.model, signal: speechAbort.signal,
+      lang: opts.lang, model: opts.model, signal: speechAbort.signal, light: !!readSettings().lightMode,
       onProgress: pr => e.sender.send('speech:progress', pr),
     });
     const fresh = projects.load(id);

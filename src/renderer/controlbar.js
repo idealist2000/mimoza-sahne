@@ -74,12 +74,14 @@ async function addRecorder(name, stream, kind, bits) {
   return entry;
 }
 
+let FPS = 30;
 async function openSources() {
+  FPS = config.light ? 24 : 30;
   const big = config.quality === 720 ? { w: 1280, h: 720 } : { w: 1920, h: 1080 };
   let screen = null;
   if (config.sourceId) {
     screen = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 30, max: 30 }, width: { max: big.w }, height: { max: big.h } },
+      video: { frameRate: { ideal: FPS, max: 30 }, width: { max: big.w }, height: { max: big.h } },
       audio: !!config.system,
     });
     streams.push(screen);
@@ -87,7 +89,7 @@ async function openSources() {
   }
   let camera = null;
   if (config.cameraId) {
-    camera = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: config.cameraId }, width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 30 } } });
+    camera = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: config.cameraId }, width: { ideal: config.light ? 640 : 960 }, height: { ideal: config.light ? 360 : 540 }, frameRate: { ideal: FPS, max: 30 } } });
     streams.push(camera);
   }
   let mic = null;
@@ -131,7 +133,7 @@ async function constantFrameRate(stream) {
   };
   draw();
   // Çalışan bir zamanlayıcı: pencere görünür ve arka plan yavaşlatması kapalı.
-  pump = setInterval(draw, 1000 / 30);
+  pump = setInterval(draw, 1000 / FPS);
   streams.push(out);
   return out;
 }
@@ -169,7 +171,7 @@ async function start() {
       await addRecorder('screen', await constantFrameRate(src.screen), 'video', hd ? 6_000_000 : 3_500_000);
       if (src.screen.getAudioTracks().length) await addRecorder('system', new MediaStream(src.screen.getAudioTracks()), 'audio');
     }
-    if (src.camera) await addRecorder('camera', src.camera, 'video', 2_000_000);
+    if (src.camera) await addRecorder('camera', src.camera, 'video', config.light ? 1_000_000 : 2_000_000);
     if (src.mic) await addRecorder('mic', src.mic, 'audio');
     if (!recorders.length) throw new Error('Kaydedilecek kaynak seçilmedi.');
     for (const r of recorders) r.recorder.start(1000);
@@ -181,10 +183,25 @@ async function start() {
     config.cursorShift = (logStart - screenStart) / 1000;
     state = 'recording';
     $('state').className = 'rec';
+    watchMemory();
   } catch (e) {
     alert('Kayıt başlatılamadı: ' + e.message);
     return api.rec.cancel();
   }
+}
+
+// Kayıt sırasında boş bellek kritik seviyeye inerse uyar.
+let memWarnedAt = 0;
+function watchMemory() {
+  setInterval(async () => {
+    if (state !== 'recording' && state !== 'paused') return;
+    const st = await api.sysStatus(false).catch(() => null);
+    if (!st || st.freeGB >= 0.6 || now() - memWarnedAt < 20000) return;
+    memWarnedAt = now();
+    flash('Bellek az!');
+    flashUntil = now() + 4000;
+    $('state').title = 'Boş bellek çok az. Kullanmadığınız programları kapatın veya kaydı bitirin.';
+  }, 5000);
 }
 
 function togglePause() {

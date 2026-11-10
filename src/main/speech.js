@@ -134,7 +134,7 @@ const PROMPTS = {
 };
 
 // Projenin konuşma kanalını yazıya döker. Dönüş: { words, lang, model }
-async function transcribe(project, dir, { lang = 'tr', model = 'small', onProgress, signal } = {}) {
+async function transcribe(project, dir, { lang = 'tr', model = 'small', onProgress, signal, light } = {}) {
   const voice = voiceTrack(project);
   if (!voice) throw new Error('Bu projede ses kanalı yok.');
   const progress = (phase, p) => onProgress?.({ phase, p });
@@ -146,7 +146,7 @@ async function transcribe(project, dir, { lang = 'tr', model = 'small', onProgre
     const wav = path.join(tmp, 'ses.wav');
     await ff.run(['-y', '-i', path.join(dir, voice.file), '-vn', '-ac', '1', '-ar', '16000', '-af', 'highpass=f=70,dynaudnorm=f=150:g=11', '-c:a', 'pcm_s16le', wav], { signal });
     // Fiziksel çekirdek sayısı kadar iş parçacığı yeterli; fazlası bilgisayarı kilitler.
-    const threads = Math.max(2, Math.min(4, os.cpus().length - 2));
+    const threads = light ? 2 : Math.max(2, Math.min(4, os.cpus().length - 2));
     const base = path.join(tmp, 'sonuc');
     const args = ['-m', mfile, '-f', wav, '-l', lang, '-t', String(threads), '-ml', '1', '-sow', '-oj', '-of', base, '-pp', '-bs', model === 'small' ? '2' : '1', '-bo', '2', '-mc', '64'];
     if (PROMPTS[lang]) args.push('--prompt', PROMPTS[lang]);

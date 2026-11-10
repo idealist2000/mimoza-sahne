@@ -12,6 +12,10 @@ Ekranınızı, kameranızı, mikrofonunuzu ve bilgisayar sesini **ayrı kanallar
 
 Node.js, FFmpeg veya başka bir araç kurmanız gerekmez. Hepsi programla birlikte gelir.
 
+## Hafif mod
+
+Kayıt hazırlığı ekranındaki **Bilgisayar durumu** kartı boş belleği ve en çok bellek kullanan programları gösterir. 8 GB ve altı bilgisayarlarda veya bellek azken **hafif mod** kendiliğinden açılır: 720p ekran, düşük çözünürlüklü kamera, saniyede 24 kare; dışa aktarma ve altyazı daha az çekirdek kullanır. Boş bellek kritik seviyedeyse kayıt başlamadan uyarı verilir, kayıt sırasında bellek azalırsa kontrol çubuğunda "Bellek az!" yazar.
+
 ## Kayıt
 
 - **Tüm ekran, alan veya pencere** kaydı. Alan seçerken ekranın üzerinde fareyle dikdörtgen çizersiniz.

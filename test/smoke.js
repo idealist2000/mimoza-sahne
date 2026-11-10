@@ -134,7 +134,7 @@ app.whenReady().then(async () => {
     await wait(1500);
     await shot('4-kayit-hazirligi');
     // Gerçek kayıt testi: tüm ekran, 3 sn
-    js("Setup.sourceId = Setup.sources.find(s => s.kind === 'screen').id; Setup.start()").catch(e => console.log("start:", e.message));
+    js("document.getElementById('light-mode').checked = true; Setup.applyLight(false); Setup.sourceId = Setup.sources.find(s => s.kind === 'screen').id; Setup.start()").catch(e => console.log("start:", e.message));
     let bar;
     for (let i = 0; i < 30 && !bar; i++) { await wait(200); bar = BrowserWindow.getAllWindows().find(w => w.getURL().includes('controlbar')); }
     if (!bar) throw new Error('Kontrol çubuğu açılmadı');

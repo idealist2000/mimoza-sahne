@@ -366,10 +366,13 @@ function buildExport(project, dir, assets, outFile, encoder, opts = {}) {
 const TEMP = ['export-graph.txt', 'export-cursor.cmd'];
 function cleanTemp(dir) { for (const f of TEMP) { try { fs.unlinkSync(path.join(dir, f)); } catch {} } }
 
-async function exportVideo(project, dir, assets, outFile, { onProgress, signal, quality, range } = {}) {
+async function exportVideo(project, dir, assets, outFile, { onProgress, signal, quality, range, light } = {}) {
   let encoder = await detectEncoder();
+  // Hafif modda işlemci kodlayıcısı en çok 2 iş parçacığı kullanır (daha yavaş ama bilgisayar rahat kalır).
+  if (light && encoder.name === 'libx264') encoder = { ...encoder, args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2), '-threads', '2'] };
   const attempt = async enc => {
     const { args, outDur } = buildExport(project, dir, assets, outFile, enc, { quality, range });
+    if (light) args.unshift('-filter_complex_threads', '1', '-filter_threads', '1');
     await run(['-progress', 'pipe:1', '-nostats', ...args], {
       signal, cwd: dir,
       onStdout: d => {
@@ -386,7 +389,7 @@ async function exportVideo(project, dir, assets, outFile, { onProgress, signal, 
   } catch (e) {
     if (signal?.aborted || encoder.name === 'libx264') { cleanTemp(dir); throw e; }
     // Donanım kodlayıcı başarısız olursa işlemciyle tekrar dene.
-    encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2), '-threads', String(Math.max(2, os.cpus().length - 1))], pix: 'yuv420p' };
+    encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2), '-threads', String(light ? 2 : Math.max(2, os.cpus().length - 1))], pix: 'yuv420p' };
     encoder = encoderCache;
     try { await attempt(encoder); } finally { cleanTemp(dir); }
   }
