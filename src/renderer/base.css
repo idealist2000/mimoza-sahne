@@ -1,0 +1,56 @@
+:root {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --panel-2: #1c222b;
+  --raised: #232a35;
+  --line: #2b3440;
+  --line-2: #394453;
+  --text: #eef2f7;
+  --muted: #9aa7b8;
+  --faint: #6b788a;
+  --yellow: #ffc72c;
+  --yellow-2: #ffd75e;
+  --yellow-ink: #2b2100;
+  --red: #ff5a5f;
+  --green: #3ddc97;
+  --blue: #59a8ff;
+  --violet: #b18cff;
+  --radius: 8px;
+  color-scheme: dark;
+  font: 13px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); overflow: hidden; user-select: none; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line-2);
+  background: var(--raised); color: var(--text); font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--yellow); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--yellow); color: var(--yellow-ink); border-color: var(--yellow); }
+button.primary:hover:not(:disabled) { background: var(--yellow-2); }
+button.danger { background: var(--red); border-color: var(--red); color: #fff; }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+button.ghost:hover:not(:disabled) { color: var(--text); background: var(--raised); border-color: var(--line-2); }
+button.icon { padding: 0; width: 32px; }
+button[aria-pressed="true"] { border-color: var(--yellow); color: var(--yellow); background: #2d2711; }
+input[type=text], input[type=number], select, textarea {
+  width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--line-2); background: #0f1319; outline: none;
+}
+input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus { border-color: var(--yellow); }
+textarea { resize: vertical; user-select: text; }
+input[type=range] { accent-color: var(--yellow); width: 100%; }
+input[type=checkbox] { accent-color: var(--yellow); width: 16px; height: 16px; margin: 0; }
+input[type=color] { width: 36px; height: 30px; padding: 2px; border: 1px solid var(--line-2); border-radius: 6px; background: #0f1319; }
+:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+kbd { font: 600 11px/1 "Cascadia Mono", Consolas, monospace; padding: 3px 6px; border-radius: 5px; background: var(--raised); border: 1px solid var(--line-2); color: var(--text); }
+.muted { color: var(--muted); }
+.scroll { overflow: auto; }
+.scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }

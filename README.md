@@ -1,76 +1,93 @@
 # Mimoza Sahne
 
-Mimoza Bilişim’in ücretsiz, açık kaynak video aracı. Ekranınızı ve kameranızı kaydedin, hareketli başlıklar ekleyin ve yayına hazırlayın.
+Mimoza Bilişim'in ücretsiz, açık kaynak ekran kaydı ve kurgu stüdyosu. Windows için masaüstü uygulaması.
 
-## Windows’ta başlatma
+Ekranınızı, kameranızı, mikrofonunuzu ve bilgisayar sesini **ayrı kanallara** kaydedin. Kayıt bitince proje Camtasia tarzı kurgu ekranında açılır. Tıkladığınız yerlere otomatik yakınlaşma, imleç vurgusu, bulanıklaştırma ve kamera yerleşimini orada düzenleyip hızlı MP4 olarak dışa aktarın.
 
-1. Node.js 22 veya daha yeni bir sürüm kurun. Chrome veya Edge kullanın.
-2. Kurulum dosyanız varsa **Mimoza-Sahne-Kurulum.cmd** dosyasını çalıştırın. Program kullanıcı hesabınızın Yerel Uygulama Verileri klasörüne kurulur ve masaüstünde **Mimoza Sahne** kısayolu oluşur.
-3. Kaynak koddan çalıştırmak için **baslat.cmd** dosyasını açın. Alternatif olarak `node server.mjs` çalıştırıp [yerel uygulamayı](http://127.0.0.1:4178) açın.
+## Kurulum
 
-## Video hazırlama
+1. [Son sürüm sayfasından](https://github.com/idealist2000/mimoza-sahne/releases/latest) `Mimoza-Sahne-Kurulum-x.y.z.exe` dosyasını indirin.
+2. Çift tıklayıp kurun. Kurulum bitince masaüstünde ve Başlat menüsünde **Mimoza Sahne** kısayolu oluşur.
+3. Program dijital imzalı olmadığı için Windows ilk açılışta "Windows bilgisayarınızı korudu" uyarısı gösterebilir. **Ek bilgi → Yine de çalıştır** deyin.
 
-- **Kayıt stüdyosu:** Ekran, pencere veya sekme seçin. Kameranızı köşede gösterebilir, mikrofonu ve tarayıcının sunduğu ekran sesini kayda alabilirsiniz. Ekran kaydederken stüdyoyu ikinci ekranda ya da ekranınızın bir bölümünde görünür tutun. Tarayıcı, gizlenen sekmelerin görüntü işleme hızını düşürebilir.
-- **Sanal arka plan:** Kamera için bir görsel seçerseniz yeşil perde alanları bu görselle değiştirilir. Odayı otomatik ayırmak için yapay zekâ segmentasyonu kullanılmıyor.
-- **Başlıklar:** SRT dosyası yükleyin, konuşma metnini yapıştırın veya başlıkları elle ekleyin. SRT zamanları kullanılır. Düz metinde her satıra eşit süre ayrılır.
-- **Dışa aktarma:** Yatay, dikey veya kare boyut seçin. İsterseniz başlangıç ve bitiş zamanını belirleyin. WebM veya tarayıcınız destekliyorsa MP4 indirin. Geçerli kareyi kapak için PNG olarak kaydedebilirsiniz.
-- **Yerel yapay zekâ:** [Ollama](https://ollama.com/) çalışıyorsa ve yerel bir metin modeli indirdiyseniz model adını girin. Model, en fazla 120 altyazı satırından Türkçe başlıklar önerir. Hızlı plan ve kayıt için Ollama ya da API anahtarı gerekmez.
+Node.js, FFmpeg veya başka bir araç kurmanız gerekmez. Hepsi programla birlikte gelir.
 
-Kaynağı hemen indir, kaydedilmiş veya yüklenmiş dosyayı yeniden işlemeye sokmadan indirir. Kayıt sırasında videoya işlenen çizimler ve kartlar korunur. Sonradan eklenen başlıklar, kesit ve boyut değişiklikleri için Düzenlenmiş videoyu indir seçeneğini kullanın. Bu dışa aktarma gerçek zamanlıdır ve sekmeyi açık tutmanız gerekir. Video tarayıcıda işlenir. Ollama seçeneği sadece altyazı metnini yerel Ollama’ya iletir.
+## Kayıt
 
-## Kilnframe ve özellik farkları
+- **Tüm ekran, alan veya pencere** kaydı. Alan seçerken ekranın üzerinde fareyle dikdörtgen çizersiniz.
+- Kayıt başlayınca stüdyo penceresi kenara çekilir. Ekranın üstünde **küçük bir kontrol çubuğu** kalır. Bu çubuk kayda girmez (Windows 10 sürüm 2004 ve sonrası).
+- Sabit duran ekranlarda da video kısalmaz, ses kaymaz. Görüntü sabit 30 kare/sn kaydedilir.
+- Kayıt doğrudan diske yazılır. Uzun kayıtlar belleği doldurmaz.
 
-Mimoza Sahne, Erhan Meydan’ın [Kilnframe](https://github.com/erhanmeydan/kilnframe) projesinden ilham aldı. Özellikle konuşmadaki önemli anları görsel vurgularla öne çıkarma fikri çıkış noktamız oldu. Mimoza Sahne, Mimoza Bilişim için bağımsız olarak yazıldı.
+### Kayıt sırasında kısayollar
 
-Otomatik altyazı isteğe bağlı yerel araçlarla çalışır. Ayrı kanalları zaman çizelgesinde düzenleme, yerel Windows kayıt motoru ve sistem genelinde kısayollar, otomatik kesim, gürültü temizleme, sesle düzeltme, gelişmiş renk araçları, üretken müzik, çok stilli 3B animasyonlar ve kurgu programı entegrasyonları henüz bulunmuyor. Erhan Meydan’ın [Desktop duyurusu](https://kilnframe.com/) ve yayımladığı eklenti farklı ürün kapsamlarına sahip.
+Bu tuşlar başka bir programdayken de çalışır.
 
-## Kurulum dosyası üretme
+| Kısayol | İşlev |
+|---|---|
+| `F9` | Duraklat / sürdür |
+| `F10` | Kaydı bitir |
+| `Ctrl+Alt+D` | Çizim modu (akıllı tahta). `Esc` ile çıkılır |
+| `Ctrl+Alt+C` | Tahtayı temizle |
+| `Ctrl+Alt+Z` | Son çizimi geri al |
+| `Ctrl+Alt+M` | Bölüm işareti koy |
+| `Ctrl+Alt+G` | Gizlilik perdesi (ekranı örter, bu aralıkta ses dışa aktarımda kısılır) |
+| `Ctrl+Alt+K` | Ders kartını göster / gizle |
+| `Ctrl+Alt+N` | Sıradaki kart |
+| `Ctrl+Alt+U` | Mikrofonu kapat / aç |
 
-Windows PowerShell’de `powershell -NoProfile -File .\build-installer.ps1` çalıştırın. `dist\Mimoza-Sahne-Kurulum.cmd` oluşur. Kurulum dosyası uygulama kodunu içerir ve sistemde kurulu Node.js’i kullanır.
+### Akıllı tahta
+
+Kalem, fosforlu kalem, ok, kutu, spot ışığı ve silgi. **Geçici** seçeneği açıkken çizimler 3 saniye sonra veya sayfayı kaydırdığınızda kendiliğinden silinir. Çizimler kayda girer. Pencere kaydında çizim kullanılamaz.
+
+### Ders profilleri ve kartlar
+
+Yapay zekâ, SEO, Google Ads, İngilizce ve Genel anlatım profilleri. Kayıttan önce her satıra bir kart yazın, alanları `|` ile ayırın:
+
+```
+Bir blog yazısı için 5 başlık öner | ChatGPT 5 başlık verdi | Başlıkları arama hacmiyle doğrula
+```
+
+Yapay zekâ profili prompt ve yanıtı yan yana, İngilizce profili kelime-anlam-örnek, Google Ads profili kampanya akışı olarak gösterir.
+
+## Kurgu
+
+- **Çok kanallı zaman çizelgesi:** Yakınlaştırma, bulanıklaştırma, ekran, kamera, mikrofon ve bilgisayar sesi ayrı kanallarda.
+- **Kesme:** Oynatma çizgisini istediğiniz yere getirip `S` ile bölün, parçayı seçip `Delete` ile silin.
+- **Otomatik yakınlaştırma:** Kayıtta tıkladığınız yerlere yumuşak geçişli yakınlaşmalar otomatik eklenir. Süresini kenarlarından sürükleyerek, yakınlaşılacak yeri önizlemede tıklayarak değiştirin. `Z` ile elle ekleyin.
+- **Bulanıklaştırma:** API anahtarı, e-posta veya hesap bilgisi görünen alanı `B` ile gizleyin.
+- **Kamera:** Önizlemede sürükleyerek taşıyın, fare tekerleğiyle büyütün. Daire, kare veya geniş şekil seçin.
+- **İmleç vurgusu ve tıklama efekti.**
+- Her kanal için ses seviyesi ve sessize alma.
+- Proje her değişiklikte otomatik kaydedilir. `Ctrl+Z` / `Ctrl+Y` ile geri alıp yineleyin.
+
+Projeler `Belgeler\Mimoza Sahne\Projeler` klasöründe durur. Her kanalın ham kaydı proje klasöründe ayrı dosya olarak saklanır.
+
+## Dışa aktarma
+
+Yatay 16:9 (YouTube), dikey 9:16 (Shorts, Reels) veya kare 1:1, 1080p ya da 720p MP4. Program bilgisayarınızdaki donanım kodlayıcıyı (Intel Quick Sync, NVIDIA veya AMD) otomatik bulur ve kullanır. Bulamazsa işlemciyle kodlar. Dışa aktarma video süresini beklemez ve arka planda çalışır.
+
+## Geliştirme
+
+```
+npm install
+node scripts/fetch-ffmpeg.js   # Windows paketine girecek FFmpeg
+npm start                      # geliştirme modunda çalıştır (sistemdeki ffmpeg kullanılır)
+npm test                       # dışa aktarma motoru testleri
+npm run dist                   # Windows kurulum dosyası (dist/)
+```
+
+Önceki tarayıcı sürümünün kodu `eski-tarayici-surumu/` klasöründedir. YouTube yükleme, yapay zekâ taslakları ve canlı yayın sonraki sürümlerde masaüstü uygulamasına taşınacak.
+
+## Yol haritası
+
+- **Teslim 2:** Tek tıkla Türkçe/İngilizce altyazı, metinden kesme, sessizlik ve "ııı" temizleme, gürültü azaltma, Mimoza marka şablonları, yeşil perdesiz arka plan, uzun videodan dikey kısa klip.
+- **Teslim 3:** OpenAI, Claude, Gemini, You.com ve Ollama ile başlık-açıklama-etiket, YouTube'a yükleme ve canlı yayın.
+
+## Teşekkür
+
+Mimoza Sahne, Erhan Meydan'ın [Kilnframe](https://github.com/erhanmeydan/kilnframe) projesinden ilham aldı.
 
 ## Lisans
 
-[MIT](LICENSE).
-
-## Stüdyo ve ders araçları
-
-- **Stüdyoyu tam ekran aç** tarayıcıyı tam ekran yapar. Kayıt sırasında aynı sekmede Alt+P duraklatır veya sürdürür, Alt+D durdurur, Alt+G gizlilik sahnesine geçer, Alt+T tahtayı temizler, Alt+B bölüm işareti koyar. Bu kısayollar Mimoza Sahne odaktayken çalışır.
-- İngilizce, SEO, Google Ads ve yapay zekâ profilleri farklı kart alanları sunar. Kartta alanları dikey çizgi ile ayırın. Geçici kalem çizgileri önizlemede kaydırınca veya yedi saniye sonra kalkar. Tahta, kart ve sahneler kayıt görüntüsüne işlenir. Gizlilik sahnesi görüntüyü örter ve kayıt ile yayın seslerini susturur.
-- **Yayın hazırlığı** düğmesi yerel bir başlık, kapak yazısı, açıklama, bölüm ve etiket taslağı oluşturur. Bölüm işaretleri son kayda aittir. Başlık önerilerini içerik ve izleyici kitlesine göre düzenleyin.
-
-## İsteğe bağlı bağlantılar
-
-**Yerel altyazı.** FFmpeg ve whisper.cpp komut satırı aracını kurun. PowerShell'de sunucuyu başlatmadan önce aşağıdaki ortam değişkenlerini ayarlayın. Çok dilli bir model Türkçe ve İngilizce için uygundur.
-
-```powershell
-$env:MIMOZA_FFMPEG = 'C:\araclar\ffmpeg.exe'
-$env:MIMOZA_WHISPER = 'C:\araclar\whisper-cli.exe'
-$env:MIMOZA_WHISPER_MODEL = 'C:\araclar\ggml-base.bin'
-node server.mjs
-```
-
-FFmpeg ve whisper-cli PATH üzerindeyse ilk iki satır isteğe bağlıdır. En fazla 300 MB kaynak video ile çalışır. Çıkan SRT metni düzenleyicide açılır.
-
-**Yapay zekâ taslağı.** Ollama, OpenAI, Claude, Gemini veya You.com Answer API seçebilirsiniz. Bulut sağlayıcıları için API anahtarınızı girin ve metnin gönderilmesine izin verin. You.com için model alanını boş bırakın. Kredi ve harcamalar sağlayıcı hesabınızda yönetilir. Uygulama API anahtarını dosyaya kaydetmez.
-
-**YouTube kanalı.** Kendi Google Cloud projenizde YouTube Data API v3'ü açın ve masaüstü OAuth istemcisi oluşturun. Test modundaysa Google hesabınızı test kullanıcısı olarak ekleyin. İstemci bilgilerini GitHub'a eklemeyin.
-
-```powershell
-$env:MIMOZA_GOOGLE_CLIENT_ID = 'istemci-kimligi'
-$env:MIMOZA_GOOGLE_CLIENT_SECRET = 'istemci-parolasi'
-node server.mjs
-```
-
-Yerel uygulamada Google bağlantısını tamamlayın ve kanalı kontrol edin. Dışa aktardığınız MP4 veya WebM dosyasını seçip başlık, açıklama, etiket, dil ve hedef kitleyi girin. Uygulama videoyu **gizli** yükler. Son yayın ve zamanlama işlemlerini Studio'da yapabilirsiniz. Kanal bağlantısı uygulama oturumu boyunca bellekte tutulur.
-
-**YouTube canlı sinyal.** FFmpeg'in libx264, AAC ve RTMPS desteği olan bir derlemesini kullanın. YouTube Studio'da yayın etkin bir kanalda, otomatik başlatma kapalı bir test yayını hazırlayın. Mimoza Sahne'de yerel kaydı başlatıp yayın anahtarını girin ve sinyali gönderin. Yayının önizlemesini ve başlatma işlemini YouTube Studio'da kontrol edin. Yerel kaydı durdurmak Mimoza Sahne'nin sinyalini de keser. Yayının sona erdiğini Studio'da doğrulayın. Tarayıcı arka planda görüntü işleme hızını düşürebilir, bu yüzden ikinci ekran veya görünür stüdyo penceresiyle test edin.
-
-
-
-
-## Çalışma alanları
-
-**Kayıt** ekranında önizleme, sayaç ve kayıt kontrolleri soldadır. Kaynaklar ve akıllı tahta sağdadır. Kayıt durunca **Kurgu** açılır. Oynatma çubuğunda istediğiniz ana gidip **Giriş koy** ve **Çıkış koy** düğmeleriyle kesiti belirleyebilir, zaman çizelgesindeki başlıkları tıklayarak yerlerini önizleyebilirsiniz. **Yayın** ekranı taslak ve kanal ayarlarını ayrı panellerde gösterir.
-
-Ayrı kaynak dosyaları seçeneği açıkken desteklenen tarayıcılar ana videonun yanında ekranı, kamerayı ve mikrofonu ayrı WebM dosyalarına kaydeder. Kurgu ekranının dışa aktarma alanından indirebilirsiniz. Ekran paylaşım sesi ekran dosyasındadır. Ayrı kayıt daha fazla işlemci ve bellek kullanabilir. Mimoza Sahne zaman çizelgesinde ayrı kaynakları katman olarak düzenleme henüz yok.
-
+[MIT](LICENSE)

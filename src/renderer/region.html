@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Kayıt alanını seçin</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  body { background: #000 center / 100% 100% no-repeat; cursor: crosshair; }
+  #dim { position: fixed; inset: 0; background: rgba(0,0,0,.5); }
+  #sel { position: fixed; border: 2px solid var(--yellow); box-shadow: 0 0 0 9999px rgba(0,0,0,.5); background: transparent; }
+  #size { position: absolute; left: 0; top: -30px; padding: 3px 8px; border-radius: 5px; background: var(--yellow); color: var(--yellow-ink); font-weight: 700; white-space: nowrap; }
+  #help { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 12px 18px; border-radius: 12px; background: rgba(14,17,22,.92); border: 1px solid var(--line-2); text-align: center; }
+  #help b { color: var(--yellow); }
+  #presets { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="dim"></div>
+<div id="sel" hidden><span id="size"></span></div>
+<div id="help">
+  <div><b>Kaydedilecek alanı fareyle çizin.</b> Onay için <kbd>Enter</kbd>, vazgeçmek için <kbd>Esc</kbd>.</div>
+  <div id="presets">
+    <button data-p="1920x1080">1920×1080</button>
+    <button data-p="1280x720">1280×720</button>
+    <button data-p="1080x1920">Dikey 1080×1920</button>
+    <button class="primary" id="ok" disabled>Bu alanı kaydet</button>
+  </div>
+</div>
+<script src="region.js"></script>
+</body>
+</html>

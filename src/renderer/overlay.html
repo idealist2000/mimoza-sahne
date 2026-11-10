@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>Mimoza Sahne katmanı</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  html, body { background: transparent; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  body.drawing canvas { cursor: crosshair; }
+  #countdown { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8,10,14,.35); }
+  #countdown span { font: 800 180px/1 "Segoe UI", system-ui; color: var(--yellow); text-shadow: 0 8px 40px rgba(0,0,0,.6); }
+  #countdown small { position: absolute; bottom: 18vh; font-size: 20px; color: #fff; text-shadow: 0 2px 10px #000; }
+  #privacy { position: fixed; inset: 0; display: grid; place-items: center; background: #0e1116; color: #fff; text-align: center; }
+  #privacy b { display: block; font-size: 44px; color: var(--yellow); }
+  #privacy span { font-size: 20px; color: var(--muted); }
+  #region { position: fixed; border: 3px dashed var(--yellow); pointer-events: none; border-radius: 3px; }
+
+  .card { position: fixed; left: 40px; bottom: 48px; max-width: min(760px, 60vw); padding: 22px 26px 22px 30px; border-radius: 16px;
+    background: rgba(14,17,22,.94); color: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.45); border-left: 8px solid var(--yellow);
+    animation: rise .35s cubic-bezier(.2,.8,.2,1); }
+  @keyframes rise { from { transform: translateY(24px); opacity: 0; } }
+  .card .tag { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--yellow); margin-bottom: 10px; }
+  .card .row { display: grid; grid-template-columns: 130px 1fr; gap: 14px; padding: 6px 0; font-size: 24px; line-height: 1.3; }
+  .card .row b { font-size: 15px; color: var(--muted); font-weight: 600; padding-top: 5px; }
+  .card.vocab .word { font-size: 46px; font-weight: 800; line-height: 1.1; }
+  .card.vocab .mean { font-size: 28px; color: var(--yellow); margin-top: 4px; }
+  .card.vocab .ex { font-size: 22px; font-style: italic; color: #d7dee8; margin-top: 12px; }
+  .card.flow .steps { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 24px; }
+  .card.flow .step { padding: 10px 16px; border-radius: 10px; background: #232a35; }
+  .card.flow .step small { display: block; font-size: 12px; color: var(--muted); }
+  .card.flow .arrow { color: var(--yellow); font-size: 28px; }
+  .card.compare { max-width: min(1100px, 80vw); }
+  .card.compare .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card.compare .col { padding: 14px 16px; border-radius: 10px; background: #1d232d; font-size: 21px; }
+  .card.compare .col b { display: block; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .card.compare .col.ans { border: 1px solid #3d4757; }
+  .card.compare .check { margin-top: 12px; font-size: 19px; color: var(--green); }
+</style>
+</head>
+<body>
+<canvas id="ink"></canvas>
+<div id="region" hidden></div>
+<div id="cardHost"></div>
+<div id="privacy" hidden><div><b>Kısa bir ara</b><span>Birazdan devam ediyoruz</span></div></div>
+<div id="countdown" hidden><span id="count">3</span><small>Kontrol çubuğu kayda girmez · F9 duraklat · F10 bitir</small></div>
+<script src="../shared/profiles.js"></script>
+<script src="overlay.js"></script>
+</body>
+</html>

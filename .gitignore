@@ -1,1 +1,5 @@
+node_modules/
 dist/
+vendor/
+test/fixture/
+test/smoke-out/
