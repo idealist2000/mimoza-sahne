@@ -1,0 +1,27 @@
+.msy-box { --msy-navy: #002058; --msy-yellow: #FED501; max-width: 720px; margin: 32px auto; padding: 28px; border-radius: 18px; background: var(--msy-navy); color: #fff; box-shadow: 0 18px 50px rgba(0, 32, 88, .25); font-size: 16px; line-height: 1.5; box-sizing: border-box; }
+.msy-box *, .msy-box *::before, .msy-box *::after { box-sizing: border-box; }
+.msy-head { display: flex; gap: 16px; align-items: center; }
+.msy-head img { width: 64px; height: 64px; flex: none; border-radius: 14px; background: #fff; padding: 6px; }
+.msy-head h2 { margin: 0 0 4px; color: #fff; font-size: 26px; line-height: 1.2; }
+.msy-head p { margin: 0; color: #d6def0; }
+.msy-brand { margin: 0 0 2px !important; color: var(--msy-yellow) !important; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+.msy-meta { margin: 16px 0 0; padding: 8px 12px; border-radius: 8px; background: rgba(255, 255, 255, .08); color: #d6def0; font-size: 14px; }
+.msy-form { margin-top: 18px; display: grid; gap: 12px; }
+.msy-form label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; color: #fff; }
+.msy-form input[type=text], .msy-form input[type=email], .msy-form select { width: 100%; padding: 11px 12px; border-radius: 9px; border: 2px solid transparent; background: #fff; color: #10152a; font-size: 16px; }
+.msy-form input:focus, .msy-form select:focus { outline: none; border-color: var(--msy-yellow); }
+.msy-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.msy-check { display: flex !important; gap: 10px; align-items: flex-start; font-weight: 400 !important; color: #d6def0 !important; }
+.msy-check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--msy-yellow); flex: none; }
+.msy-check a, .msy-kvkk a { color: var(--msy-yellow); }
+.msy-opt { font-weight: 400; color: #9fb0d0; }
+.msy-btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 26px; border: 0; border-radius: 10px; background: var(--msy-yellow); color: var(--msy-navy) !important; font-weight: 800; font-size: 17px; text-decoration: none !important; cursor: pointer; }
+.msy-btn:hover { filter: brightness(1.05); }
+.msy-hp { position: absolute !important; left: -9999px !important; }
+.msy-ok { margin-top: 18px; padding: 18px; border-radius: 12px; background: rgba(254, 213, 1, .12); border: 1px solid rgba(254, 213, 1, .5); }
+.msy-ok p { color: #d6def0; }
+.msy-small { font-size: 13px; }
+.msy-err { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: rgba(255, 90, 95, .18); color: #ffd2d4; }
+.msy-kvkk { margin-top: 14px; color: #c3cde3; font-size: 13px; }
+.msy-kvkk summary { cursor: pointer; color: #d6def0; }
+@media (max-width: 560px) { .msy-box { padding: 20px; border-radius: 14px; } .msy-row { grid-template-columns: 1fr; } .msy-head h2 { font-size: 22px; } }

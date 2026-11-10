@@ -9,6 +9,7 @@ const projects = require('./projects.js');
 const inputLog = require('./input-log.js');
 const speech = require('./speech.js');
 const sysinfo = require('./sysinfo.js');
+const updater = require('./updater.js');
 const { net } = require('electron');
 const T = require('../shared/timeline.js');
 
@@ -399,6 +400,7 @@ ipcMain.handle('rec:close-tracks', async () => {
 });
 
 async function teardown() {
+  setTimeout(() => updater.recordingEnded(), 3000);
   globalShortcut.unregisterAll();
   if (blocker !== null) { try { powerSaveBlocker.stop(blocker); } catch {} blocker = null; }
   overlay?.close();
@@ -651,6 +653,10 @@ app.whenReady().then(() => {
   });
   setupProtocol();
   setupDisplayMedia();
+  updater.setup({
+    sender: st => { if (studio && !studio.isDestroyed()) studio.webContents.send('update:status', st); },
+    recording: () => !!rec,
+  });
   setupTray();
   createStudio();
 });

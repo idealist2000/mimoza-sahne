@@ -326,4 +326,25 @@ api.project.onProcessing(msg => {
 });
 api.project.onOpen(id => { Processing.hide(); window.Editor.open(id); });
 
+// ---------- Güncelleme bildirimi ----------
+function renderUpdate(st) {
+  const el = $('upd');
+  if (!st || !['downloading', 'ready', 'available'].includes(st.state)) { el.hidden = true; return; }
+  el.hidden = false;
+  if (st.state === 'ready') {
+    el.title = st.notes || '';
+    el.innerHTML = `<span>Yeni sürüm ${esc(st.version)} hazır</span><button class="primary" id="upd-go">Yeniden başlat ve güncelle</button>`;
+    $('upd-go').onclick = async () => {
+      const r = await api.update.install();
+      if (r?.error) alert(r.error);
+    };
+  } else {
+    el.title = 'Yeni sürüm arka planda iniyor. Bitince size haber verilecek.';
+    const p = st.percent || 0;
+    el.innerHTML = `<span>Güncelleme iniyor</span><span class="ubar"><i style="width:${p}%"></i></span><span>%${p}</span>`;
+  }
+}
+api.update.onStatus(renderUpdate);
+api.update.state().then(renderUpdate);
+
 App.show('home');

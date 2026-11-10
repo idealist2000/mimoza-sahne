@@ -101,6 +101,13 @@ Projeler `Belgeler\Mimoza Sahne\Projeler` klasöründe durur. Her kanalın ham k
 
 Yatay 16:9 (YouTube), dikey 9:16 (Shorts, Reels) veya kare 1:1, 1080p ya da 720p MP4. Program bilgisayarınızdaki donanım kodlayıcıyı (Intel Quick Sync, NVIDIA veya AMD) otomatik bulur ve kullanır. Bulamazsa işlemciyle kodlar. Dışa aktarma video süresini beklemez ve arka planda çalışır.
 
+## Otomatik güncelleme ve indirme sayfası
+
+`wordpress/mimoza-sahne-yayin` klasöründeki WordPress eklentisi iki iş yapar:
+
+- **İndirme sayfası:** Bir sayfaya `[mimoza_sahne]` kısa kodunu ekleyin. Mimoza Bilişim renklerinde, ad ve e-posta isteyen, KVKK onaylı bir indirme kutusu çıkar. İndirenler panelde listelenir ve CSV olarak alınabilir.
+- **Güncelleme sunucusu:** WordPress panelinde **Mimoza Sahne → Sürüm ve güncelleme** sayfasından yeni kurulum dosyasını yükleyin. Dosya parça parça yüklenir, sunucunun yükleme sınırına takılmaz. Program her açılışta `https://mimozabilisim.com/mimoza-sahne-guncelleme/latest.yml` adresine bakar; yeni sürüm varsa arka planda indirir ve "Yeniden başlat ve güncelle" düğmesi gösterir. Kayıt sürerken indirme ve kurulum yapılmaz.
+
 ## Geliştirme
 
 ```

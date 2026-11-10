@@ -10,6 +10,12 @@ const on = channel => fn => {
 contextBridge.exposeInMainWorld('mimoza', {
   info: () => ipcRenderer.invoke('app:info'),
   sysStatus: withApps => ipcRenderer.invoke('sys:status', withApps),
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    check: () => ipcRenderer.invoke('update:check'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onStatus: on('update:status'),
+  },
   settings: { get: () => ipcRenderer.invoke('settings:get'), set: patch => ipcRenderer.invoke('settings:set', patch) },
   encoder: () => ipcRenderer.invoke('encoder:detect'),
   showInFolder: p => ipcRenderer.invoke('shell:show', p),

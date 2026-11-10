@@ -221,3 +221,9 @@ button.wide { width: 100%; }
 .sys-apps { display: grid; gap: 2px; font-size: 12px; }
 .sys-apps div { display: flex; justify-content: space-between; color: var(--muted); }
 .sys-apps div b { color: var(--text); font-weight: 500; }
+
+/* Güncelleme bildirimi */
+.upd { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-radius: 20px; background: #2d2711; border: 1px solid #5a4a12; color: var(--yellow-2); font-size: 12px; font-weight: 600; margin-right: 6px; }
+.upd button { min-height: 26px; height: 26px; padding: 0 10px; font-size: 12px; border-radius: 14px; }
+.upd .ubar { width: 60px; height: 6px; border-radius: 3px; background: #4a3d0a; overflow: hidden; }
+.upd .ubar i { display: block; height: 100%; background: var(--yellow); }

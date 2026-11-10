@@ -1,7 +1,7 @@
 {
   "name": "mimoza-sahne",
   "productName": "Mimoza Sahne",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Mimoza Bilişim ekran kaydı ve kurgu stüdyosu",
   "author": "Mimoza Bilişim",
   "license": "MIT",
@@ -12,6 +12,7 @@
     "dist": "electron-builder --win nsis --x64"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "uiohook-napi": "1.5.5"
   },
   "devDependencies": {
@@ -24,10 +25,26 @@
     "copyright": "Mimoza Bilişim",
     "artifactName": "Mimoza-Sahne-Kurulum-${version}.${ext}",
     "npmRebuild": false,
-    "publish": null,
-    "files": ["src/**/*", "package.json", "node_modules/uiohook-napi/**/*", "node_modules/node-gyp-build/**/*"],
-    "extraResources": [{ "from": "vendor/win", "to": "bin" }],
-    "directories": { "output": "dist", "buildResources": "build" },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://mimozabilisim.com/mimoza-sahne-guncelleme/"
+      }
+    ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/win",
+        "to": "bin"
+      }
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",
@@ -42,7 +59,9 @@
       "shortcutName": "Mimoza Sahne",
       "runAfterFinish": true,
       "language": "1055",
-      "installerLanguages": ["tr_TR"]
+      "installerLanguages": [
+        "tr_TR"
+      ]
     }
   }
 }
