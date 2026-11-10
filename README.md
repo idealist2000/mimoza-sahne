@@ -22,7 +22,7 @@ Kaynağı hemen indir, kaydedilmiş veya yüklenmiş dosyayı yeniden işlemeye 
 
 Mimoza Sahne, Erhan Meydan’ın [Kilnframe](https://github.com/erhanmeydan/kilnframe) projesinden ilham aldı. Özellikle konuşmadaki önemli anları görsel vurgularla öne çıkarma fikri çıkış noktamız oldu. Mimoza Sahne, Mimoza Bilişim için bağımsız olarak yazıldı.
 
-Otomatik altyazı isteğe bağlı yerel araçlarla çalışır. Ayrı kayıt kanalları, yerel Windows kayıt motoru ve sistem genelinde kısayollar, otomatik kesim, gürültü temizleme, sesle düzeltme, gelişmiş renk araçları, üretken müzik, çok stilli 3B animasyonlar ve kurgu programı entegrasyonları henüz bulunmuyor. Erhan Meydan’ın [Desktop duyurusu](https://kilnframe.com/) ve yayımladığı eklenti farklı ürün kapsamlarına sahip.
+Otomatik altyazı isteğe bağlı yerel araçlarla çalışır. Ayrı kanalları zaman çizelgesinde düzenleme, yerel Windows kayıt motoru ve sistem genelinde kısayollar, otomatik kesim, gürültü temizleme, sesle düzeltme, gelişmiş renk araçları, üretken müzik, çok stilli 3B animasyonlar ve kurgu programı entegrasyonları henüz bulunmuyor. Erhan Meydan’ın [Desktop duyurusu](https://kilnframe.com/) ve yayımladığı eklenti farklı ürün kapsamlarına sahip.
 
 ## Kurulum dosyası üretme
 
@@ -66,4 +66,11 @@ Yerel uygulamada Google bağlantısını tamamlayın ve kanalı kontrol edin. D�
 **YouTube canlı sinyal.** FFmpeg'in libx264, AAC ve RTMPS desteği olan bir derlemesini kullanın. YouTube Studio'da yayın etkin bir kanalda, otomatik başlatma kapalı bir test yayını hazırlayın. Mimoza Sahne'de yerel kaydı başlatıp yayın anahtarını girin ve sinyali gönderin. Yayının önizlemesini ve başlatma işlemini YouTube Studio'da kontrol edin. Yerel kaydı durdurmak Mimoza Sahne'nin sinyalini de keser. Yayının sona erdiğini Studio'da doğrulayın. Tarayıcı arka planda görüntü işleme hızını düşürebilir, bu yüzden ikinci ekran veya görünür stüdyo penceresiyle test edin.
 
 
+
+
+## Çalışma alanları
+
+**Kayıt** ekranında önizleme, sayaç ve kayıt kontrolleri soldadır. Kaynaklar ve akıllı tahta sağdadır. Kayıt durunca **Kurgu** açılır. Oynatma çubuğunda istediğiniz ana gidip **Giriş koy** ve **Çıkış koy** düğmeleriyle kesiti belirleyebilir, zaman çizelgesindeki başlıkları tıklayarak yerlerini önizleyebilirsiniz. **Yayın** ekranı taslak ve kanal ayarlarını ayrı panellerde gösterir.
+
+Ayrı kaynak dosyaları seçeneği açıkken desteklenen tarayıcılar ana videonun yanında ekranı, kamerayı ve mikrofonu ayrı WebM dosyalarına kaydeder. Kurgu ekranının dışa aktarma alanından indirebilirsiniz. Ekran paylaşım sesi ekran dosyasındadır. Ayrı kayıt daha fazla işlemci ve bellek kullanabilir. Mimoza Sahne zaman çizelgesinde ayrı kaynakları katman olarak düzenleme henüz yok.
 

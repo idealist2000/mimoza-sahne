@@ -22,6 +22,7 @@ refreshProfile();
 
 function refreshScene() {
   $('lesson-scene').value = scene;
+  document.dispatchEvent(new Event('mimoza-scene-change'));
   $('lesson-state').textContent = { waiting: 'Bekleme', lesson: 'Ders', questions: 'Soru-cevap', privacy: 'Gizlilik', closing: 'Kapanış' }[scene];
 }
 $('lesson-scene').onchange = event => { scene = event.target.value; refreshScene(); };
@@ -153,3 +154,4 @@ export function paintLesson(ctx, width, height) {
   ctx.font = '26px system-ui';
   lines.forEach((line, index) => ctx.fillText(line, x + 20, y + 67 + index * 38, width * .45));
 }
+

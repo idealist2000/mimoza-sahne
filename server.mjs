@@ -12,6 +12,7 @@ const origin = 'http://127.0.0.1:' + port;
 const files = new Map([
   ['/', ['index.html', 'text/html']],
   ['/app.js', ['app.js', 'text/javascript']],
+  ['/workspace.js', ['workspace.js', 'text/javascript']],
   ['/publish.js', ['publish.js', 'text/javascript']],
   ['/lesson.js', ['lesson.js', 'text/javascript']],
   ['/profiles.js', ['profiles.js', 'text/javascript']],
@@ -119,6 +120,7 @@ createServer(async (req, res) => {
     }).on('error', () => {});
   }
 });
+
 
 
 

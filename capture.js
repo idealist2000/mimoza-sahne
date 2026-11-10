@@ -31,7 +31,7 @@ function cover(ctx, image, x, y, width, height) {
   ctx.drawImage(image, (iw - cropWidth) / 2, (ih - cropHeight) / 2, cropWidth, cropHeight, x, y, width, height);
 }
 
-function draw(session) {
+function draw(session, timestamp = performance.now()) {
   const { width, height } = preview;
   context.fillStyle = '#141726';
   context.fillRect(0, 0, width, height);
@@ -64,15 +64,18 @@ function draw(session) {
       cover(context, session.camera, x, y, w, h);
     }
   }
-  if (session.gains) {
-    const level = $('lesson-scene').value === 'privacy' ? 0 : session.gains.length > 1 ? 0.7 : 1;
-    for (const gain of session.gains) gain.gain.value = level;
-  }
   paintLesson(context, width, height);
-  session.frame = requestAnimationFrame(() => draw(session));
+  if (session.captureTrack && timestamp - (session.lastFrame ?? -Infinity) >= 32) {
+    session.captureTrack.requestFrame();
+    session.lastFrame = timestamp;
+  }
+  session.frame = requestAnimationFrame(time => draw(session, time));
 }
 
 function finish(message) {
+  preview.hidden = true;
+  $('capture-empty').hidden = false;
+  document.dispatchEvent(new Event('mimoza-capture-finish'));
   $('record-status').textContent = message;
   $('record-start').disabled = false;
   $('record-stop').disabled = true;
@@ -92,13 +95,15 @@ $('record-start').onclick = async () => {
   $('editor').inert = true;
   $('capture-options').disabled = true;
   $('record-status').textContent = 'Kayıt izinleri bekleniyor…';
-  const session = { streams: [] };
+  const session = { streams: [], isolated: [] };
+  const separate = $('record-isolated').checked;
   current = session;
   try {
     if (screen) {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: $('record-system').checked });
       session.streams.push(stream);
       session.screen = await source(stream);
+      if (separate) saveTrack(session, stream, 'ekran');
       stream.getVideoTracks()[0].addEventListener('ended', () => {
         session.screenEnded = true;
         if (session.recorder && session.recorder.state !== 'inactive') session.recorder.stop();
@@ -111,6 +116,8 @@ $('record-start').onclick = async () => {
       });
       session.streams.push(stream);
       if (camera) session.camera = await source(stream);
+      if (separate && camera) saveTrack(session, new MediaStream(stream.getVideoTracks()), 'kamera');
+      if (separate && stream.getAudioTracks().length) saveTrack(session, new MediaStream(stream.getAudioTracks()), 'mikrofon');
     }
     const file = $('record-background').files[0];
     if (file && camera) {
@@ -128,9 +135,10 @@ $('record-start').onclick = async () => {
     if (session.screenEnded) throw new Error('Ekran paylaşımı kapatıldı.');
     preview.hidden = false;
     draw(session);
-    const output = preview.captureStream(30);
+    const output = preview.captureStream(0);
+    session.captureTrack = output.getVideoTracks()[0];
     session.streams.push(output);
-    const audioTracks = session.streams.flatMap(stream => stream.getAudioTracks());
+    const audioTracks = session.streams.filter(stream => !session.isolated.some(item => item.stream === stream)).flatMap(stream => stream.getAudioTracks());
     if (audioTracks.length) {
       session.gains = [];
       session.audio = new AudioContext();
@@ -153,17 +161,26 @@ $('record-start').onclick = async () => {
     session.mimeType = mimeType;
     recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
     recorder.onerror = () => { session.failed = true; };
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       const duration = (performance.now() - session.start - session.paused - (session.pauseStart ? performance.now() - session.pauseStart : 0)) / 1000;
       stopLive(session);
+      const trackFiles = await stopTracks(session);
       release(session);
       current = undefined;
-      if (session.failed || !chunks.length) return finish('Kayıt dosyası oluşturulamadı.');
+      if (session.failed || !chunks.length) {
+        document.dispatchEvent(new CustomEvent('mimoza-isolated-files', { detail: trackFiles }));
+        return finish(trackFiles.length
+          ? 'Birleşik video oluşturulamadı. Ayrı dosyalar Kurgu ekranında hazır.'
+          : 'Kayıt dosyası oluşturulamadı. Önizlemeyi açık tutup tekrar deneyin.');
+      }
       const file = new File(chunks, 'mimoza-kayit.webm', { type: 'video/webm' });
-      document.dispatchEvent(new CustomEvent('mimoza-recorded', { detail: { file, duration } }));
+      document.dispatchEvent(new CustomEvent('mimoza-recorded', { detail: { file, duration, trackFiles } }));
       finish('Kayıt düzenleyiciye aktarıldı.');
     };
     recorder.start(1000);
+    session.captureTrack.requestFrame();
+    updatePrivacy(session);
+    for (const track of session.isolated) track.recorder.start(1000);
     session.start = performance.now();
     session.paused = 0;
     document.dispatchEvent(new Event('mimoza-capture-start'));
@@ -188,11 +205,13 @@ pauseButton.onclick = () => {
   const session = current;
   if (session?.recorder?.state === 'recording') {
     session.recorder.pause();
+    for (const track of session.isolated) if (track.recorder.state === 'recording') track.recorder.pause();
     session.pauseStart = performance.now();
     pauseButton.textContent = 'Sürdür (Alt+P)';
     document.dispatchEvent(new Event('mimoza-capture-pause'));
   } else if (session?.recorder?.state === 'paused') {
     session.recorder.resume();
+    for (const track of session.isolated) if (track.recorder.state === 'paused') track.recorder.resume();
     session.paused += performance.now() - session.pauseStart;
     session.pauseStart = undefined;
     pauseButton.textContent = 'Duraklat (Alt+P)';
@@ -282,4 +301,42 @@ $('live-start').onclick = async () => {
   }
 };
 $('live-stop').onclick = () => { if (activeLive) stopLive(activeLive.owner); };
+
+
+
+function saveTrack(session, stream, name) {
+  const hasVideo = stream.getVideoTracks().length > 0;
+  const mimeType = hasVideo ? 'video/webm;codecs=vp8,opus' : 'audio/webm;codecs=opus';
+  if (!MediaRecorder.isTypeSupported(mimeType)) return;
+  const isolatedStream = stream.clone();
+  session.streams.push(isolatedStream);
+  const recorder = new MediaRecorder(isolatedStream, { mimeType });
+  const chunks = [];
+  recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+  const file = new Promise(resolve => {
+    recorder.onstop = () => resolve(chunks.length ? new File(chunks, name + '.webm', { type: mimeType.split(';')[0] }) : null);
+    recorder.onerror = () => resolve(null);
+  });
+  session.isolated.push({ recorder, file, stream: isolatedStream });
+}
+
+async function stopTracks(session) {
+  for (const track of session.isolated) {
+    if (track.recorder.state !== 'inactive') track.recorder.stop();
+  }
+  return (await Promise.all(session.isolated.map(track => track.file))).filter(Boolean);
+}
+
+
+function updatePrivacy(session) {
+  const visible = $('lesson-scene').value !== 'privacy';
+  const level = !visible ? 0 : session.gains?.length > 1 ? 0.7 : 1;
+  for (const gain of session.gains || []) gain.gain.value = level;
+  for (const item of session.isolated) {
+    for (const track of item.stream.getTracks()) track.enabled = visible;
+  }
+}
+document.addEventListener('mimoza-scene-change', () => { if (current) updatePrivacy(current); });
+
+
 

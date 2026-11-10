@@ -12,6 +12,7 @@ let recorder;
 let cancelled = false;
 let busy = false;
 let recordedDuration;
+let captions = [];
 const duration = () => Number.isFinite(video.duration) ? video.duration : recordedDuration;
 
 function setBusy(value) {
@@ -40,6 +41,7 @@ function loadVideo(file, length) {
 $('aspect').onchange = resize;
 video.onloadedmetadata = () => {
   resize();
+  refreshCaptions();
   status('Metni ekleyin veya elle bir başlık oluşturun.');
 };
 function resize() {
@@ -57,7 +59,10 @@ function resize() {
 video.addEventListener('error', () => status('Video okunamadı. Tarayıcınızın desteklediği bir MP4 veya WebM deneyin.'));
 $('srt').onchange = async () => {
   const file = $('srt').files[0];
-  if (file) $('script').value = await file.text();
+  if (file) {
+    $('script').value = await file.text();
+    refreshCaptions();
+  }
 };
 
 function parseTime(value) {
@@ -130,7 +135,12 @@ $('add').onclick = () => {
   edit();
 };
 
+function emitScenes() {
+  document.dispatchEvent(new CustomEvent('mimoza-scenes', { detail: scenes.map(scene => ({ ...scene })) }));
+}
+
 function edit() {
+  emitScenes();
   $('scenes').replaceChildren(...scenes.map((scene, index) => {
     const row = document.createElement('div');
     row.className = 'scene';
@@ -142,7 +152,7 @@ function edit() {
       if (field === 'title') input.maxLength = 75;
       else { input.min = 0; input.step = '0.01'; }
       input.value = field === 'title' ? scene[field] : Number(scene[field].toFixed(2));
-      input.oninput = () => { scene[field] = field === 'title' ? input.value : input.valueAsNumber; };
+      input.oninput = () => { scene[field] = field === 'title' ? input.value : input.valueAsNumber; emitScenes(); };
       label.append(input);
       row.append(label);
     }
@@ -168,11 +178,12 @@ function draw() {
     scene.title.trim() && scene.start <= time && time < scene.end &&
     (!latest || scene.start >= latest.start) ? scene : latest
   ), null);
-  if (!active) return;
+  if (!active) { drawCaption(time); return; }
   const unit = Math.min(width, height);
   const fade = Math.min(1, (time - active.start) / 0.28, (active.end - time) / 0.22);
-  const x = unit * 0.055;
-  const y = height - unit * (0.19 - (1 - fade) * 0.025);
+  const motion = $('motion').value;
+  const x = unit * (0.055 - (motion === 'slide' ? (1 - fade) * 0.09 : 0));
+  const y = height - unit * (0.22 + ($('caption-visible').checked ? 0.105 : 0) - (motion === 'rise' ? (1 - fade) * 0.04 : 0));
   const padding = unit * 0.028;
   ctx.save();
   ctx.globalAlpha = fade;
@@ -187,6 +198,7 @@ function draw() {
   ctx.fillStyle = '#ffffff';
   ctx.fillText(active.title, x + padding, y + unit * 0.06, maxText);
   ctx.restore();
+  drawCaption(time);
 }
 
 function preview() {
@@ -339,8 +351,52 @@ $('caption-auto').onclick = async () => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     $('script').value = data.srt;
+    refreshCaptions();
     status('Altyazı hazır. Metni kontrol edip başlık oluşturabilirsiniz.');
   } catch (error) { status(error.message); }
   finally { setBusy(false); }
 };
 
+
+
+
+function refreshCaptions() {
+  try { captions = readCues(); } catch { captions = []; }
+}
+$('script').addEventListener('input', refreshCaptions);
+$('caption-visible').addEventListener('change', refreshCaptions);
+video.addEventListener('durationchange', refreshCaptions);
+
+function drawCaption(time) {
+  if (!$('caption-visible').checked) return;
+  const current = captions.find(cue => cue.start <= time && time < cue.end);
+  if (!current) return;
+  const unit = Math.min(canvas.width, canvas.height);
+  const text = current.title.slice(0, 180);
+  ctx.save();
+  ctx.font = '600 ' + Math.round(unit * .045) + 'px system-ui';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  const max = canvas.width * .86;
+  const width = Math.min(max, ctx.measureText(text).width) + unit * .04;
+  const y = canvas.height - unit * .095;
+  ctx.fillStyle = '#0b1018';
+  ctx.fillRect((canvas.width - width) / 2, y - unit * .035, width, unit * .07);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(text, canvas.width / 2, y, max);
+  ctx.restore();
+}
+
+function srtTime(seconds) {
+  const ms = Math.round(seconds * 1000);
+  const pad = (value, digits = 2) => String(value).padStart(digits, '0');
+  return pad(Math.floor(ms / 3600000)) + ':' + pad(Math.floor(ms / 60000) % 60) + ':' +
+    pad(Math.floor(ms / 1000) % 60) + ',' + pad(ms % 1000, 3);
+}
+$('caption-save').onclick = () => {
+  refreshCaptions();
+  if (!captions.length) return status('Altyazı için önce bir video ve metin ekleyin.');
+  const srt = captions.map((cue, index) =>
+    (index + 1) + '\n' + srtTime(cue.start) + ' --> ' + srtTime(cue.end) + '\n' + cue.title + '\n').join('\n');
+  download(new Blob([srt], { type: 'application/x-subrip;charset=utf-8' }), 'mimoza-altyazi.srt');
+};

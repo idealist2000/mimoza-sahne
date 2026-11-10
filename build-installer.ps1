@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $dist = Join-Path $PSScriptRoot 'dist'
 $null = New-Item -ItemType Directory -Force -Path $dist
-$names = @('app.js', 'capture.js', 'lesson.js', 'profiles.js', 'publish.js', 'ai-draft.mjs', 'live.mjs', 'transcribe.mjs', 'youtube.mjs', 'index.html', 'style.css', 'server.mjs', 'baslat.cmd', 'README.md', 'LICENSE')
+$names = @('app.js', 'capture.js', 'workspace.js', 'lesson.js', 'profiles.js', 'publish.js', 'ai-draft.mjs', 'live.mjs', 'transcribe.mjs', 'youtube.mjs', 'index.html', 'style.css', 'server.mjs', 'baslat.cmd', 'README.md', 'LICENSE')
 $archive = Join-Path $dist ('payload-' + [guid]::NewGuid() + '.zip')
 try {
     Compress-Archive -LiteralPath ($names | ForEach-Object { Join-Path $PSScriptRoot $_ }) -DestinationPath $archive
@@ -25,5 +25,6 @@ try {
 } finally {
     Remove-Item -LiteralPath $archive -ErrorAction SilentlyContinue
 }
+
 
 

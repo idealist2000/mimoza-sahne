@@ -8,22 +8,46 @@
 <script type="module" src="/app.js"></script>
 <script type="module" src="/capture.js"></script>
 <script type="module" src="/publish.js"></script>
+<script type="module" src="/workspace.js"></script>
 </head>
 <body>
-<header><span>MİMOZA BİLİŞİM / VİDEO ATÖLYESİ</span><h1>Mimoza Sahne</h1><p>Konuşmanızdaki önemli anları hareketli başlıklarla öne çıkarın.</p></header>
+<header class="topbar">
+  <div class="brand"><span class="brand-icon" aria-hidden="true">▶</span><div><h1>Mimoza Sahne</h1><small>MİMOZA BİLİŞİM</small></div></div>
+  <nav aria-label="Çalışma alanları">
+    <button type="button" data-view="record" aria-current="page"><span>01</span> Kayıt</button>
+    <button type="button" data-view="edit"><span>02</span> Kurgu</button>
+    <button type="button" data-view="publish"><span>03</span> Yayın</button>
+  </nav>
+  <button id="studio-full" class="utility">⛶ <span>Tam ekran</span></button>
+</header>
+<div id="record-workspace" class="workspace">
+<div class="workspace-heading"><div><p class="eyebrow">KAYIT STÜDYOSU</p><h2>Yeni çekim</h2></div><button type="button" id="open-video">Hazır video aç ↗</button></div>
+<div class="record-layout">
 <section id="studio">
-<h2>Kayıt stüdyosu</h2>
+<div class="panel-title"><h3>Kayıt önizlemesi</h3><output id="record-clock">00:00</output></div>
+<div class="stage capture-stage">
+<div id="capture-empty" class="stage-empty"><span aria-hidden="true">◉</span><strong>Çekime hazır</strong><small>Kaynaklarınızı seçin ve kaydı başlatın.</small></div>
+<canvas id="capture-preview" width="1280" height="720" hidden aria-label="Kayıt önizlemesi"></canvas>
+</div>
+<div class="actions record-actions">
+<button id="record-start" class="primary record">● Kaydı başlat</button>
+<button id="record-pause" disabled>Duraklat (Alt+P)</button>
+<button id="record-stop" disabled>Kaydı bitir</button>
+</div>
+<p id="record-status" class="status" role="status">Ekran, kamera ve ses kaynaklarınızı seçin.</p>
+
+</section>
+<aside class="inspector">
+<section class="panel sources">
+<h3>Kayıt kaynakları</h3>
 <fieldset id="capture-options">
 <legend>Kaynaklar</legend>
 <label><input id="record-screen" type="checkbox" checked> Bilgisayar ekranı veya pencere</label>
 <label><input id="record-camera" type="checkbox"> Kamera (ekranla birlikte köşede)</label>
 <label><input id="record-mic" type="checkbox" checked> Mikrofon</label>
 <label><input id="record-system" type="checkbox"> Ekran sesi (paylaşım penceresi izin verirse)</label>
-<label>Yeşil perde yerine arka plan görseli <input id="record-background" type="file" accept="image/*"></label>
+<label><input id="record-isolated" type="checkbox"> Ayrı kaynak dosyaları da kaydet</label><label>Yeşil perde yerine arka plan görseli <input id="record-background" type="file" accept="image/*"></label>
 </fieldset>
-<canvas id="capture-preview" width="1280" height="720" hidden aria-label="Kayıt önizlemesi"></canvas>
-<button id="record-start">Kaydı başlat</button>
-<button id="record-pause" disabled>Duraklat (Alt+P)</button><button id="record-stop" disabled>Kaydı bitir (Alt+D)</button><button id="studio-full">Stüdyoyu tam ekran aç</button>
 <details>
 <summary>YouTube canlı yayın (FFmpeg gerekir)</summary>
 <p>YouTube Studio’da otomatik başlatmayı kapatın. Önce yerel kaydı başlatın, sonra sinyali gönderin ve yayın önizlemesini YouTube Studio’da kontrol edin.</p>
@@ -32,10 +56,9 @@
 <button id="live-stop" disabled>Yayın sinyalini kes</button>
 <p id="live-status" role="status"></p>
 </details>
-<p id="record-status" role="status">İsterseniz aşağıdan hazır video da ekleyebilirsiniz.</p>
 </section>
-<section id="lesson">
-<h2>Akıllı tahta ve ders profilleri</h2>
+<section id="lesson" class="panel">
+<h3>Akıllı tahta</h3>
 <div class="range">
 <label>Ders profili <select id="lesson-profile"></select></label>
 <label>Sahne <select id="lesson-scene"><option value="lesson">Ders</option><option value="waiting">Bekleme</option><option value="questions">Soru-cevap</option><option value="privacy">Gizlilik</option><option value="closing">Kapanış</option></select></label>
@@ -57,28 +80,44 @@
 <p id="lesson-status" role="status">Çizimler kayıt önizlemesi üzerinden yapılır.</p>
 </section>
 
-<main id="editor">
+</aside>
+</div>
+</div>
+<main id="editor" class="workspace" hidden>
+<div class="workspace-heading"><div><p class="eyebrow">KURGU STÜDYOSU</p><h2>Videonuzu düzenleyin</h2></div><span class="file-badge" id="active-file">Video seçilmedi</span></div>
+<div class="editor-layout">
 <section>
-<h2>1. Videoyu ve metni ekleyin</h2>
+<h3>Medya ve metin</h3>
 <label>Video <input id="file" type="file" accept="video/*"></label>
 <label>SRT altyazı dosyası <input id="srt" type="file" accept=".srt"></label>
 <label>Konuşma metni veya SRT <textarea id="script" rows="7" placeholder="SRT yükleyin veya konuşma metnini buraya yapıştırın. Düz metinde her satır video süresine eşit dağıtılır."></textarea></label>
 <label>Otomatik altyazı dili <select id="caption-language"><option value="tr">Türkçe</option><option value="en">İngilizce</option><option value="auto">Otomatik</option></select></label>
-<button id="caption-auto">Yerel altyazı üret</button>
+<div class="actions"><button id="caption-auto">Yerel altyazı üret</button><button id="caption-save">SRT indir</button></div>
+<label><input id="caption-visible" type="checkbox"> Altyazıyı önizleme ve çıktıda göster</label>
 <button id="quick">Hızlı plan</button>
 <details><summary>Ollama ile yapay zekâ planı</summary>
 <label>Yüklü yerel model adı <input id="model" placeholder="Ollama listesinde görünen model adı"></label>
 <button id="ai">Yapay zekâ ile planla</button>
 </details>
-<h2>2. Başlıkları düzenleyin</h2>
-<label>Vurgu rengi <input id="accent" type="color" value="#ffdb70"></label>
+<h3>Hareketli başlıklar</h3>
+<div class="range"><label>Vurgu rengi <input id="accent" type="color" value="#76ead0"></label>
+<label>Başlık hareketi <select id="motion"><option value="rise">Yukarı kaydır</option><option value="fade">Yumuşak geçiş</option><option value="slide">Soldan kaydır</option></select></label></div>
 <div id="scenes"></div>
 <button id="add">Başlık ekle</button>
 </section>
 <section>
-<h2>3. Önizleyin ve indirin</h2>
+<div class="panel-title"><h3>Önizleme</h3><output id="editor-clock">00:00</output></div><div class="stage editor-stage">
 <canvas id="canvas" width="960" height="540" aria-label="Video önizlemesi"></canvas>
-<video id="video" controls playsinline preload="auto" aria-label="Kaynak video ve oynatma kontrolleri"></video>
+</div>
+<video id="video" playsinline preload="auto" hidden></video>
+<div class="transport">
+<button type="button" id="play-toggle" disabled>▶ Oynat</button>
+<label class="sr-only" for="playhead">Oynatma konumu</label><input id="playhead" type="range" min="0" max="0" step="0.01" value="0" disabled>
+<button type="button" id="mark-in" disabled>Giriş koy</button><button type="button" id="mark-out" disabled>Çıkış koy</button>
+</div>
+<div id="title-track" class="timeline" aria-label="Başlık zaman çizelgesi"></div>
+<div class="export-panel"><h3>Dışa aktar</h3>
+<details id="extra-tracks" hidden><summary>Ayrı kaynak kayıtları</summary><div id="track-downloads" class="actions"></div></details>
 <label>Video biçimi
 <select id="aspect"><option value="source">Kaynak boyutu</option><option value="16:9">Yatay 16:9</option><option value="9:16">Dikey 9:16</option><option value="1:1">Kare 1:1</option></select>
 </label>
@@ -87,16 +126,16 @@
 <label>Kesit başlangıcı (sn) <input id="trim-start" type="number" min="0" step="0.01" value="0"></label>
 <label>Kesit bitişi (sn) <input id="trim-end" type="number" min="0" step="0.01" placeholder="Video sonu"></label>
 </div>
-<button id="download-source" disabled>Kaynağı hemen indir</button>
+<button id="download-source" class="primary" disabled>Kaynağı hemen indir</button>
 <button id="export">Düzenlenmiş videoyu indir</button>
 <p class="hint">Hızlı indirme, hazır dosyayı kullanır. Sonradan eklenen başlıklar, kesit ve boyut için düzenlenmiş videoyu indirin.</p>
 <button id="poster">Geçerli kareyi PNG indir</button>
 <button id="cancel" hidden>İptal</button>
-<p id="status" role="status">Başlamak için bir video seçin.</p>
+<p id="status" class="status" role="status">Başlamak için bir video seçin.</p></div>
 </section>
-</main>
-<section id="publish">
-<h2>YouTube yayın hazırlığı</h2>
+</div></main>
+<section id="publish" class="workspace" hidden>
+<div class="workspace-heading"><div><p class="eyebrow">YAYIN STÜDYOSU</p><h2>YouTube yayın hazırlığı</h2></div></div><div class="publish-layout"><section class="panel"><h3>Taslak ve başlıklar</h3>
 <label>Video konusu <input id="publish-topic" maxlength="200"></label>
 <button id="publish-local">Ücretsiz taslak oluştur</button>
 <details>
@@ -110,8 +149,7 @@
 <label>Başlık, kapak, açıklama, bölüm ve etiket taslağı <textarea id="publish-draft" rows="13"></textarea></label>
 <button id="publish-copy">Taslağı kopyala</button>
 <a href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer">YouTube Studio’yu aç</a>
-<details>
-<summary>Kanal bağlantısı ve gizli video yükleme</summary>
+</section><section class="panel"><h3>YouTube kanalı</h3><details open><summary>Kanal bağlantısı ve gizli video yükleme</summary>
 <p id="youtube-channel">Kanal bilgisi alınmadı.</p>
 <button id="youtube-connect">Google ile kanalı bağla</button>
 <button id="youtube-check">Bağlantıyı kontrol et</button>
@@ -126,11 +164,14 @@
 <a id="youtube-result" target="_blank" rel="noopener noreferrer" hidden>Yüklenen videoyu Studio’da aç</a>
 <p id="youtube-status" role="status"></p>
 </details>
-<p id="publish-status" role="status">Taslakta kullandığınız metin ve bölüm işaretleri bu projeden alınır.</p>
+<p id="publish-status" role="status">Taslakta kullandığınız metin ve bölüm işaretleri bu projeden alınır.</p></section></div>
 </section>
 
 </body>
 </html>
+
+
+
 
 
 
