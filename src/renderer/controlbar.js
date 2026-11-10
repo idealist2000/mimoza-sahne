@@ -141,6 +141,7 @@ async function constantFrameRate(stream) {
 async function start() {
   config = await api.rec.config();
   if (!config) return;
+  setCompact(config.barCompact !== false, false);
   cards = Profiles.parseCards(config.cards);
   if (!cards.length) { $('card').disabled = true; $('next').disabled = true; }
   if (!config.micId) { $('mic').disabled = true; }
@@ -253,6 +254,8 @@ async function cancel() {
 
 function setDraw(on) {
   if (config?.kind === 'window') return;
+  if (on && compact) { compactBeforeDraw = true; setCompact(false); }
+  else if (!on && compactBeforeDraw) { compactBeforeDraw = false; setTimeout(() => setCompact(true), 50); }
   drawOn = on;
   $('draw').setAttribute('aria-pressed', String(on));
   $('tools').hidden = !on;
@@ -337,6 +340,43 @@ addEventListener('keydown', e => {
   else if (e.key === 'Escape') setDraw(false);
 });
 $('temporary').onchange = () => api.overlay.send({ type: 'temporary', on: $('temporary').checked });
+
+// ---------- Mini görünüm ve taşıma ----------
+let compact = false;
+let compactBeforeDraw = false;
+function setCompact(on, save = true) {
+  compact = on;
+  $('bar').classList.toggle('compact', on);
+  $('size-toggle').innerHTML = icon(on ? 'grow' : 'shrink');
+  $('size-toggle').title = on ? 'Tüm araçları göster' : 'Küçült (yalnızca sayaç ve düğmeler)';
+  if (save) requestAnimationFrame(() => api.rec.barLayout(on, $('bar').offsetHeight + 8));
+}
+$('size-toggle').onclick = () => setCompact(!compact);
+
+// Tutamaktan veya sayaçtan tutup sürükleyerek çubuğu istediğiniz yere taşıyın.
+for (const handle of [$('grip'), $('state')]) {
+  let dragging = false, pending = null;
+  handle.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    dragging = true;
+    handle.setPointerCapture(e.pointerId);
+    $('grip').classList.add('dragging');
+    api.rec.barDrag('start', e.screenX, e.screenY);
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    if (!pending) requestAnimationFrame(() => { api.rec.barDrag('move', pending[0], pending[1]); pending = null; });
+    pending = [e.screenX, e.screenY];
+  });
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    $('grip').classList.remove('dragging');
+    api.rec.barDrag('end', e.screenX, e.screenY);
+  };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
 
 // Kontrol çubuğu boyutu çizim araçlarına göre değişir
 new MutationObserver(() => api.rec.resize?.($('bar').offsetHeight + 8)).observe($('tools'), { attributes: true });

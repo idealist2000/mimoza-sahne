@@ -142,6 +142,18 @@ app.whenReady().then(async () => {
     await wait(1000);
     const barShot = await bar.webContents.capturePage();
     fs.writeFileSync(path.join(out, '5-kontrol-cubugu.png'), barShot.toPNG());
+    // Kontrol çubuğu: mini görünüm, büyütme, sürükleme
+    console.log('CUBUK ILK:', JSON.stringify(bar.getBounds()));
+    fs.writeFileSync(path.join(out, '5a-mini-cubuk.png'), (await bar.webContents.capturePage()).toPNG());
+    await bar.webContents.executeJavaScript("document.getElementById('size-toggle').click(); 0");
+    await wait(400);
+    console.log('CUBUK BUYUK:', JSON.stringify(bar.getBounds()));
+    await bar.webContents.executeJavaScript("api.rec.barDrag('start', 500, 500); api.rec.barDrag('move', 300, 200); api.rec.barDrag('end', 300, 200); 0");
+    await wait(300);
+    console.log('CUBUK TASINDI:', JSON.stringify(bar.getBounds()));
+    await bar.webContents.executeJavaScript("document.getElementById('size-toggle').click(); 0");
+    await wait(400);
+    console.log('CUBUK KUCUK:', JSON.stringify(bar.getBounds()));
     // Akıllı tahta: çizim modu ve araç değiştirme
     await bar.webContents.executeJavaScript("commands.draw(); 0");
     await wait(500);
@@ -169,6 +181,7 @@ app.whenReady().then(async () => {
     const dirs = fs.readdirSync(path.join(out, 'docs', 'Mimoza Sahne', 'Projeler'));
     for (const d of dirs) console.log('PROJE', d, fs.readdirSync(path.join(out, 'docs', 'Mimoza Sahne', 'Projeler', d)).join(', '));
     const newest = dirs.sort().pop();
+    console.log('KAYITLI CUBUK:', JSON.stringify(JSON.parse(fs.readFileSync(path.join(out, 'userdata', 'ayarlar.json'), 'utf8')).controlBar));
     console.log('PROJE.JSON', fs.readFileSync(path.join(out, 'docs', 'Mimoza Sahne', 'Projeler', newest, 'project.json'), 'utf8').slice(0, 900));
   } catch (e) { errors.push('Test betiği: ' + e.message); }
   console.log('HATALAR:', errors.length ? errors.join('\n') : 'yok');

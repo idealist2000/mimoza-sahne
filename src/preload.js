@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('mimoza', {
     finish: meta => ipcRenderer.invoke('rec:finish', meta),
     cancel: () => ipcRenderer.invoke('rec:cancel'),
     resize: h => ipcRenderer.send('rec:resize', h),
+    barLayout: (compact, h) => ipcRenderer.send('bar:layout', compact, h),
+    barDrag: (phase, x, y) => ipcRenderer.send('bar:drag', phase, x, y),
     onCmd: on('cmd'),
   },
   overlay: {

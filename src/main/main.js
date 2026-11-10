@@ -93,11 +93,29 @@ function createOverlay(display) {
   overlay.on('closed', () => { overlay = null; });
 }
 
+// Kontrol çubuğu: sürüklenebilir, konumu ve mini görünümü hatırlanır.
+const BAR_FULL_W = 700, BAR_MINI_W = 300, BAR_H = 64;
+function clampToScreen(b) {
+  const wa = screen.getDisplayMatching(b).workArea;
+  return {
+    x: Math.round(Math.min(Math.max(b.x, wa.x), wa.x + wa.width - b.width)),
+    y: Math.round(Math.min(Math.max(b.y, wa.y), wa.y + wa.height - b.height)),
+    width: b.width, height: b.height,
+  };
+}
 function createControlBar(display) {
   const wa = display.workArea;
-  const w = 700, h = 64;
+  const saved = readSettings().controlBar || {};
+  const compact = saved.compact !== false;
+  const w = compact ? BAR_MINI_W : BAR_FULL_W, h = BAR_H;
+  // Varsayılan yer: sağ alt köşe (tarayıcı sekmelerini ve sohbet kutularını kapatmaz).
+  let pos = { x: wa.x + wa.width - w - 16, y: wa.y + wa.height - h - 16, width: w, height: h };
+  if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+    // Kaydedilen konum sağ/alt kenara göre tutulur; genişlik değişse de aynı köşede kalır.
+    pos = clampToScreen({ x: saved.x + (saved.right ? (saved.w || w) - w : 0), y: saved.y, width: w, height: h });
+  }
   controlBar = new BrowserWindow({
-    x: Math.round(wa.x + (wa.width - w) / 2), y: wa.y + 12, width: w, height: h,
+    x: pos.x, y: pos.y, width: w, height: h,
     transparent: true, frame: false, resizable: false, maximizable: false, minimizable: false,
     skipTaskbar: true, alwaysOnTop: true, fullscreenable: false, hasShadow: false, show: false,
     backgroundColor: '#00000000', webPreferences: webPrefs(),
@@ -273,7 +291,7 @@ ipcMain.handle('rec:prepare', async (e, config) => {
   if (rec) throw new Error('Bir kayıt zaten sürüyor.');
   const display = config.kind === 'window' ? screen.getPrimaryDisplay() : displayFor(config.displayId);
   const p = projects.create();
-  rec = { config: { ...config, displayBounds: display.bounds, scaleFactor: display.scaleFactor }, project: p, tracks: new Map(), nextTrack: 1, startedAt: null };
+  rec = { config: { ...config, displayBounds: display.bounds, scaleFactor: display.scaleFactor, barCompact: (readSettings().controlBar || {}).compact !== false }, project: p, tracks: new Map(), nextTrack: 1, startedAt: null };
   writeSettings({ lastSetup: { ...config, cards: config.cards } });
   createOverlay(display);
   createControlBar(display);
@@ -284,10 +302,44 @@ ipcMain.handle('rec:prepare', async (e, config) => {
 });
 
 ipcMain.handle('rec:config', () => rec?.config || null);
+function saveBarState(extra = {}) {
+  if (!controlBar || controlBar.isDestroyed()) return;
+  const b = controlBar.getBounds();
+  const wa = screen.getDisplayMatching(b).workArea;
+  const right = b.x + b.width / 2 > wa.x + wa.width / 2;
+  writeSettings({ controlBar: { ...(readSettings().controlBar || {}), x: b.x, y: b.y, w: b.width, right, ...extra } });
+}
+// Boyut değişince çubuk ekranın içinde kalır; alt yarıdaysa alt kenarı sabit tutulur.
+function setBarSize(w, h) {
+  if (!controlBar || controlBar.isDestroyed()) return;
+  const b = controlBar.getBounds();
+  const wa = screen.getDisplayMatching(b).workArea;
+  const lower = b.y + b.height / 2 > wa.y + wa.height / 2;
+  const right = b.x + b.width / 2 > wa.x + wa.width / 2;
+  const nb = clampToScreen({
+    x: right ? b.x + b.width - w : b.x,
+    y: lower ? b.y + b.height - h : b.y,
+    width: w, height: h,
+  });
+  controlBar.setBounds(nb);
+}
 ipcMain.on('rec:resize', (e, h) => {
   if (!controlBar || e.sender !== controlBar.webContents) return;
-  const [w] = controlBar.getSize();
-  controlBar.setSize(w, Math.max(60, Math.min(200, Math.round(h))));
+  setBarSize(controlBar.getBounds().width, Math.max(60, Math.min(200, Math.round(h))));
+});
+ipcMain.on('bar:layout', (e, compact, h) => {
+  if (!controlBar || e.sender !== controlBar.webContents) return;
+  setBarSize(compact ? BAR_MINI_W : BAR_FULL_W, Math.max(60, Math.min(200, Math.round(h))));
+  saveBarState({ compact });
+});
+let barDrag = null;
+ipcMain.on('bar:drag', (e, phase, sx, sy) => {
+  if (!controlBar || e.sender !== controlBar.webContents) return;
+  if (phase === 'start') { barDrag = { b: controlBar.getBounds(), sx, sy }; return; }
+  if (!barDrag) return;
+  const nb = clampToScreen({ ...barDrag.b, x: barDrag.b.x + (sx - barDrag.sx), y: barDrag.b.y + (sy - barDrag.sy) });
+  controlBar.setPosition(nb.x, nb.y);
+  if (phase === 'end') { barDrag = null; saveBarState(); }
 });
 
 ipcMain.handle('rec:open-track', (e, name, mime) => {

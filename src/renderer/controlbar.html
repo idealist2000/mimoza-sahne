@@ -9,7 +9,12 @@
   body { background: transparent; }
   .bar { margin: 4px; border-radius: 14px; background: rgba(18, 22, 29, .96); border: 1px solid #3a4452; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
   .row { display: flex; align-items: center; gap: 4px; height: 54px; padding: 0 8px; }
-  .grip { -webkit-app-region: drag; color: var(--faint); display: grid; place-items: center; width: 22px; height: 40px; cursor: move; }
+  .grip { color: var(--faint); display: grid; place-items: center; width: 24px; height: 44px; cursor: grab; border-radius: 8px; touch-action: none; }
+  .grip:hover { color: var(--text); background: #232a35; }
+  .grip.dragging { cursor: grabbing; }
+  .rec { cursor: grab; }
+  /* Mini görünüm: yalnızca sayaç, duraklat, bitir */
+  .bar.compact .full-only, .bar.compact .tools { display: none !important; }
   .rec { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; min-width: 104px; }
   .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(255,90,95,.2); animation: blink 1.2s infinite; }
   .paused .dot { background: var(--yellow); animation: none; box-shadow: 0 0 0 4px rgba(255,199,44,.2); }
@@ -36,17 +41,18 @@
     <div class="rec waiting" id="state"><span class="dot"></span><span class="time" id="time">00:00</span></div>
     <button class="icon" id="pause" title="Duraklat / sürdür (F9)"></button>
     <button class="danger" id="stop" title="Kaydı bitir (F10)"></button>
-    <span class="sep"></span>
-    <button class="icon" id="draw" title="Çizim modu (Ctrl+Alt+D)" aria-pressed="false"></button>
-    <button class="icon" id="clear" title="Tahtayı temizle (Ctrl+Alt+C)"></button>
-    <button class="icon" id="mark" title="Bölüm işareti (Ctrl+Alt+M)"></button>
-    <button class="icon" id="privacy" title="Gizlilik perdesi (Ctrl+Alt+G)" aria-pressed="false"></button>
-    <button class="icon" id="card" title="Kartı göster / gizle (Ctrl+Alt+K)" aria-pressed="false"></button>
-    <button class="icon" id="next" title="Sıradaki kart (Ctrl+Alt+N)"></button>
-    <span class="sep"></span>
-    <button class="icon" id="mic" title="Mikrofonu kapat / aç (Ctrl+Alt+U)" aria-pressed="false"></button>
-    <span class="meter" title="Mikrofon seviyesi"><i id="level"></i></span>
-    <button class="icon ghost" id="cancel" title="Kaydı iptal et"></button>
+    <span class="sep full-only"></span>
+    <button class="icon full-only" id="draw" title="Çizim modu (Ctrl+Alt+D)" aria-pressed="false"></button>
+    <button class="icon full-only" id="clear" title="Tahtayı temizle (Ctrl+Alt+C)"></button>
+    <button class="icon full-only" id="mark" title="Bölüm işareti (Ctrl+Alt+M)"></button>
+    <button class="icon full-only" id="privacy" title="Gizlilik perdesi (Ctrl+Alt+G)" aria-pressed="false"></button>
+    <button class="icon full-only" id="card" title="Kartı göster / gizle (Ctrl+Alt+K)" aria-pressed="false"></button>
+    <button class="icon full-only" id="next" title="Sıradaki kart (Ctrl+Alt+N)"></button>
+    <span class="sep full-only"></span>
+    <button class="icon full-only" id="mic" title="Mikrofonu kapat / aç (Ctrl+Alt+U)" aria-pressed="false"></button>
+    <span class="meter full-only" title="Mikrofon seviyesi"><i id="level"></i></span>
+    <button class="icon ghost full-only" id="cancel" title="Kaydı iptal et"></button>
+    <button class="icon ghost" id="size-toggle" title="Küçült / büyüt"></button>
   </div>
   <div class="tools" id="tools" hidden>
     <button class="icon" data-tool="pen" title="Kalem (1)" aria-pressed="true"></button>
@@ -55,7 +61,7 @@
     <button class="icon" data-tool="box" title="Kutu (4)" aria-pressed="false"></button>
     <button class="icon" data-tool="spot" title="Spot ışığı (5)" aria-pressed="false"></button>
     <button class="icon" data-tool="eraser" title="Silgi (6)" aria-pressed="false"></button>
-    <span class="sep"></span>
+    <span class="sep full-only"></span>
     <button class="swatch" data-color="#ffc72c" style="background:#ffc72c" aria-pressed="true" title="Sarı"></button>
     <button class="swatch" data-color="#ff5a5f" style="background:#ff5a5f" aria-pressed="false" title="Kırmızı"></button>
     <button class="swatch" data-color="#3ddc97" style="background:#3ddc97" aria-pressed="false" title="Yeşil"></button>
