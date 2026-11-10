@@ -282,7 +282,12 @@ const commands = {
   mic: toggleMic,
 };
 api.rec.onCmd(cmd => commands[cmd]?.());
-api.overlay.onEvent(msg => { if (msg.type === 'draw-off') setDraw(false); });
+api.overlay.onEvent(msg => {
+  if (msg.type === 'draw-off') setDraw(false);
+  else if (msg.type === 'tool') for (const o of document.querySelectorAll('[data-tool]')) o.setAttribute('aria-pressed', String(o.dataset.tool === msg.tool));
+  else if (msg.type === 'color') for (const o of document.querySelectorAll('[data-color]')) o.setAttribute('aria-pressed', String(o.dataset.color === msg.color));
+  else if (msg.type === 'temporary') $('temporary').checked = msg.on;
+});
 
 $('pause').onclick = commands.pause;
 $('stop').onclick = commands.stop;
@@ -302,6 +307,18 @@ for (const b of document.querySelectorAll('[data-color]')) b.onclick = () => {
   for (const o of document.querySelectorAll('[data-color]')) o.setAttribute('aria-pressed', String(o === b));
   api.overlay.send({ type: 'color', color: b.dataset.color });
 };
+// Kontrol çubuğu odaktayken de çizim kısayolları çalışsın.
+addEventListener('keydown', e => {
+  if (!drawOn) return;
+  const tools = [...document.querySelectorAll('[data-tool]')];
+  if (/^[1-6]$/.test(e.key)) tools[+e.key - 1].click();
+  else if (e.key.toLowerCase() === 'c') {
+    const sw = [...document.querySelectorAll('[data-color]')];
+    const i = sw.findIndex(b => b.getAttribute('aria-pressed') === 'true');
+    sw[(i + 1) % sw.length].click();
+  } else if (e.key.toLowerCase() === 'g') $('temporary').click();
+  else if (e.key === 'Escape') setDraw(false);
+});
 $('temporary').onchange = () => api.overlay.send({ type: 'temporary', on: $('temporary').checked });
 
 // Kontrol çubuğu boyutu çizim araçlarına göre değişir

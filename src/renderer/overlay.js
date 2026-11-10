@@ -24,8 +24,9 @@ canvas.addEventListener('pointerdown', e => {
   if (!drawing || e.button !== 0) return;
   const p = pt(e);
   if (tool === 'eraser') {
-    const r = 28 * devicePixelRatio;
-    strokes = strokes.filter(s => !s.points.some(([x, y]) => Math.hypot(x - p[0], y - p[1]) < r));
+    erasing = true;
+    eraseAt(p);
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
     return;
   }
   if (tool === 'spot') { spot = p; canvas.setPointerCapture(e.pointerId); return; }
@@ -33,22 +34,35 @@ canvas.addEventListener('pointerdown', e => {
   strokes.push(current);
   canvas.setPointerCapture(e.pointerId);
 });
+let erasing = false;
+function eraseAt(p) {
+  const r = 28 * devicePixelRatio;
+  strokes = strokes.filter(s => !s.points.some(([x, y]) => Math.hypot(x - p[0], y - p[1]) < r));
+}
 canvas.addEventListener('pointermove', e => {
+  if (erasing) { eraseAt(pt(e)); return; }
   if (spot) { spot = pt(e); return; }
   if (!current) return;
   if (current.tool === 'arrow' || current.tool === 'box') current.points[1] = pt(e);
   else current.points.push(pt(e));
 });
 const end = () => {
+  erasing = false;
   if (current) current.at = performance.now();
   current = null;
   spot = null;
 };
 canvas.addEventListener('pointerup', end);
 canvas.addEventListener('pointercancel', end);
+const TOOLS = ['pen', 'highlight', 'arrow', 'box', 'spot', 'eraser'];
+const COLORS = ['#ffc72c', '#ff5a5f', '#3ddc97', '#59a8ff', '#ffffff'];
 addEventListener('keydown', e => {
-  if (e.key === 'Escape' && drawing) api.overlay.emit({ type: 'draw-off' });
-  if (e.key === 'z' && e.ctrlKey) strokes.pop();
+  if (!drawing) return;
+  if (e.key === 'Escape') api.overlay.emit({ type: 'draw-off' });
+  else if (e.key.toLowerCase() === 'z' && e.ctrlKey) strokes.pop();
+  else if (/^[1-6]$/.test(e.key)) { tool = TOOLS[+e.key - 1]; api.overlay.emit({ type: 'tool', tool }); }
+  else if (e.key.toLowerCase() === 'c') { color = COLORS[(COLORS.indexOf(color) + 1) % COLORS.length]; api.overlay.emit({ type: 'color', color }); }
+  else if (e.key.toLowerCase() === 'g') { temporary = !temporary; api.overlay.emit({ type: 'temporary', on: temporary }); }
 });
 
 function render() {

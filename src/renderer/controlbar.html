@@ -24,7 +24,8 @@
   .tools { display: flex; align-items: center; gap: 4px; height: 50px; padding: 0 10px; border-top: 1px solid var(--line); }
   .swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; padding: 0; min-height: 0; }
   .swatch[aria-pressed="true"] { border-color: #fff; }
-  .hint { color: var(--muted); font-size: 11px; margin-left: auto; }
+  .hint { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; display: flex; gap: 4px; align-items: center; }
+  .hint kbd { padding: 2px 4px; font-size: 10px; }
   label.tmp { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; margin-left: 6px; }
 </style>
 </head>
@@ -48,20 +49,20 @@
     <button class="icon ghost" id="cancel" title="Kaydı iptal et"></button>
   </div>
   <div class="tools" id="tools" hidden>
-    <button class="icon" data-tool="pen" title="Kalem" aria-pressed="true"></button>
-    <button class="icon" data-tool="highlight" title="Fosforlu kalem" aria-pressed="false"></button>
-    <button class="icon" data-tool="arrow" title="Ok" aria-pressed="false"></button>
-    <button class="icon" data-tool="box" title="Kutu" aria-pressed="false"></button>
-    <button class="icon" data-tool="spot" title="Spot ışığı" aria-pressed="false"></button>
-    <button class="icon" data-tool="eraser" title="Silgi" aria-pressed="false"></button>
+    <button class="icon" data-tool="pen" title="Kalem (1)" aria-pressed="true"></button>
+    <button class="icon" data-tool="highlight" title="Fosforlu kalem (2)" aria-pressed="false"></button>
+    <button class="icon" data-tool="arrow" title="Ok (3)" aria-pressed="false"></button>
+    <button class="icon" data-tool="box" title="Kutu (4)" aria-pressed="false"></button>
+    <button class="icon" data-tool="spot" title="Spot ışığı (5)" aria-pressed="false"></button>
+    <button class="icon" data-tool="eraser" title="Silgi (6)" aria-pressed="false"></button>
     <span class="sep"></span>
     <button class="swatch" data-color="#ffc72c" style="background:#ffc72c" aria-pressed="true" title="Sarı"></button>
     <button class="swatch" data-color="#ff5a5f" style="background:#ff5a5f" aria-pressed="false" title="Kırmızı"></button>
     <button class="swatch" data-color="#3ddc97" style="background:#3ddc97" aria-pressed="false" title="Yeşil"></button>
     <button class="swatch" data-color="#59a8ff" style="background:#59a8ff" aria-pressed="false" title="Mavi"></button>
     <button class="swatch" data-color="#ffffff" style="background:#ffffff" aria-pressed="false" title="Beyaz"></button>
-    <label class="tmp" title="Açıkken çizimler 3 saniye sonra veya sayfayı kaydırınca silinir"><input type="checkbox" id="temporary" checked> Geçici</label>
-    <span class="hint">Çıkmak için <kbd>Esc</kbd></span>
+    <label class="tmp" title="Açıkken çizimler 3 saniye sonra veya sayfayı kaydırınca silinir (G)"><input type="checkbox" id="temporary" checked> Geçici</label>
+    <span class="hint"><kbd>1–6</kbd> araç <kbd>C</kbd> renk <kbd>Esc</kbd> çık</span>
   </div>
 </div>
 <script src="icons.js"></script>

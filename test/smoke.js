@@ -142,6 +142,20 @@ app.whenReady().then(async () => {
     await wait(1000);
     const barShot = await bar.webContents.capturePage();
     fs.writeFileSync(path.join(out, '5-kontrol-cubugu.png'), barShot.toPNG());
+    // Akıllı tahta: çizim modu ve araç değiştirme
+    await bar.webContents.executeJavaScript("commands.draw(); 0");
+    await wait(500);
+    const ov = BrowserWindow.getAllWindows().find(w => w.getURL().includes('overlay'));
+    ov.webContents.sendInputEvent({ type: 'keyDown', keyCode: '3' });
+    ov.webContents.sendInputEvent({ type: 'char', keyCode: '3' });
+    ov.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'c' });
+    await wait(400);
+    console.log('ARAC:', await bar.webContents.executeJavaScript("document.querySelector('[data-tool][aria-pressed=true]').dataset.tool + ' ' + document.querySelector('[data-color][aria-pressed=true]').dataset.color"), 'cubuk yuksekligi', bar.getSize()[1]);
+    fs.writeFileSync(path.join(out, '5b-cizim-araclari.png'), (await bar.webContents.capturePage()).toPNG());
+    await bar.webContents.executeJavaScript("document.querySelector('[data-tool=box]').click(); 0");
+    await wait(200);
+    console.log('TIKLAMA SONRASI ARAC:', await ov.webContents.executeJavaScript("tool"));
+    await bar.webContents.executeJavaScript("commands.draw(); 0");
     await bar.webContents.executeJavaScript("commands.mark()");
     await wait(1500);
     await bar.webContents.executeJavaScript("commands.pause()");

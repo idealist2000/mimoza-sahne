@@ -86,12 +86,15 @@ function createOverlay(display) {
   overlay.setVisibleOnAllWorkspaces(true);
   overlay.loadFile(path.join(RENDERER, 'overlay.html'));
   overlay.once('ready-to-show', () => overlay.showInactive());
+  // Windows'ta aynı düzeydeki "her zaman üstte" pencerelerin sırası korunmaz:
+  // katman odak aldığında kontrol çubuğunu tekrar en üste çıkar.
+  overlay.on('focus', raiseControlBar);
   overlay.on('closed', () => { overlay = null; });
 }
 
 function createControlBar(display) {
   const wa = display.workArea;
-  const w = 640, h = 64;
+  const w = 700, h = 64;
   controlBar = new BrowserWindow({
     x: Math.round(wa.x + (wa.width - w) / 2), y: wa.y + 12, width: w, height: h,
     transparent: true, frame: false, resizable: false, maximizable: false, minimizable: false,
@@ -104,6 +107,14 @@ function createControlBar(display) {
   controlBar.loadFile(path.join(RENDERER, 'controlbar.html'));
   controlBar.once('ready-to-show', () => { controlBar.showInactive(); controlBar.moveTop(); });
   controlBar.on('closed', () => { controlBar = null; });
+}
+
+function raiseControlBar() {
+  if (!controlBar || controlBar.isDestroyed()) return;
+  controlBar.setAlwaysOnTop(true, 'screen-saver', 1);
+  controlBar.moveTop();
+  // Bazı Windows sürümlerinde sıralama bir sonraki karede uygulanır.
+  setTimeout(() => { if (controlBar && !controlBar.isDestroyed()) controlBar.moveTop(); }, 60);
 }
 
 // ---------- Tepsi ----------
@@ -317,7 +328,7 @@ ipcMain.on('overlay:send', (e, msg) => {
     overlay.setIgnoreMouseEvents(!msg.on, { forward: true });
     overlay.setFocusable(!!msg.on);
     if (msg.on) overlay.focus();
-    else controlBar?.moveTop();
+    raiseControlBar();
   }
   overlay.webContents.send('overlay', msg);
 });
