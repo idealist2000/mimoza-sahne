@@ -105,6 +105,7 @@ function parseWhisperJson(data, offset = 0) {
 function runWhisper(args, { onProgress, signal }) {
   return new Promise((resolve, reject) => {
     const child = spawn(whisperPath, args, { windowsHide: true, cwd: path.dirname(whisperPath) === '.' ? undefined : path.dirname(whisperPath) });
+    try { if (child.pid) os.setPriority(child.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch {}
     let err = '';
     const onData = d => {
       const s = String(d);
@@ -144,7 +145,8 @@ async function transcribe(project, dir, { lang = 'tr', model = 'small', onProgre
     progress('Ses hazırlanıyor', 0);
     const wav = path.join(tmp, 'ses.wav');
     await ff.run(['-y', '-i', path.join(dir, voice.file), '-vn', '-ac', '1', '-ar', '16000', '-af', 'highpass=f=70,dynaudnorm=f=150:g=11', '-c:a', 'pcm_s16le', wav], { signal });
-    const threads = Math.max(2, Math.min(8, os.cpus().length - 1));
+    // Fiziksel çekirdek sayısı kadar iş parçacığı yeterli; fazlası bilgisayarı kilitler.
+    const threads = Math.max(2, Math.min(4, os.cpus().length - 2));
     const base = path.join(tmp, 'sonuc');
     const args = ['-m', mfile, '-f', wav, '-l', lang, '-t', String(threads), '-ml', '1', '-sow', '-oj', '-of', base, '-pp', '-bs', model === 'small' ? '2' : '1', '-bo', '2', '-mc', '64'];
     if (PROMPTS[lang]) args.push('--prompt', PROMPTS[lang]);

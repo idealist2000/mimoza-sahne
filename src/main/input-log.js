@@ -35,17 +35,23 @@ function onWheel() {
   for (const fn of listeners.wheel) fn();
 }
 
+// Sistem geneli fare kancası yalnızca kayıt sırasında açık tutulur.
+let handlersAttached = false;
 function ensureHook() {
   if (!hook || hookStarted) return;
   try {
-    hook.on('mousedown', onMouseDown);
-    hook.on('wheel', onWheel);
+    if (!handlersAttached) { hook.on('mousedown', onMouseDown); hook.on('wheel', onWheel); handlersAttached = true; }
     hook.start();
     hookStarted = true;
   } catch (e) {
     console.warn('Fare kancası başlatılamadı:', e.message);
     hook = null;
   }
+}
+function releaseHook() {
+  if (!hookStarted) return;
+  try { hook.stop(); } catch {}
+  hookStarted = false;
 }
 
 function start(displayBounds) {
@@ -73,10 +79,11 @@ function stop() {
   clearInterval(session.timer);
   const data = { moves: session.moves, clicks: session.clicks, scrolls: session.scrolls, hook: !!hook };
   session = null;
+  releaseHook();
   return data;
 }
 
-function onWheelEvent(fn) { listeners.wheel.push(fn); ensureHook(); }
-function shutdown() { try { if (hookStarted) hook.stop(); } catch {} }
+function onWheelEvent(fn) { listeners.wheel.push(fn); }
+function shutdown() { releaseHook(); }
 
 module.exports = { start, rebase, pause, resume, stop, time, onWheelEvent, shutdown, available: () => !!hook };

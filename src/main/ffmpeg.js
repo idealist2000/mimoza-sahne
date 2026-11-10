@@ -2,6 +2,7 @@
 // FFmpeg işlemleri: düzeltme (remux), ses dalgası, kodlayıcı algılama ve dışa aktarma.
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const T = require('../shared/timeline.js');
 const Templates = require('../shared/templates.js');
@@ -10,9 +11,15 @@ let ffmpegPath = process.env.MIMOZA_FFMPEG || 'ffmpeg';
 function setFfmpegPath(p) { if (p) ffmpegPath = p; }
 function getFfmpegPath() { return ffmpegPath; }
 
+// Ağır işlemler düşük öncelikte çalışır; bilgisayarın geri kalanı yanıt vermeye devam eder.
+function lowPriority(child) {
+  try { if (child.pid) os.setPriority(child.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch {}
+}
+
 function run(args, { onStderr, onStdout, signal, cwd } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpegPath, ['-hide_banner', '-nostdin', ...args], { windowsHide: true, cwd });
+    lowPriority(child);
     let err = '';
     const out = [];
     child.stderr.on('data', d => { err += d; if (err.length > 200000) err = err.slice(-100000); onStderr?.(String(d)); });
@@ -106,7 +113,7 @@ async function detectEncoder() {
       return c;
     } catch {}
   }
-  encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2)], pix: 'yuv420p' };
+  encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2), '-threads', String(Math.max(2, os.cpus().length - 1))], pix: 'yuv420p' };
   return encoderCache;
 }
 
@@ -379,7 +386,7 @@ async function exportVideo(project, dir, assets, outFile, { onProgress, signal, 
   } catch (e) {
     if (signal?.aborted || encoder.name === 'libx264') { cleanTemp(dir); throw e; }
     // Donanım kodlayıcı başarısız olursa işlemciyle tekrar dene.
-    encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2)], pix: 'yuv420p' };
+    encoderCache = { name: 'libx264', label: 'İşlemci (libx264)', args: q => ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(q - 2), '-threads', String(Math.max(2, os.cpus().length - 1))], pix: 'yuv420p' };
     encoder = encoderCache;
     try { await attempt(encoder); } finally { cleanTemp(dir); }
   }

@@ -69,6 +69,7 @@
     afterChange(render);
   }
   function afterChange(render = true) {
+    invalidate();
     recompute();
     scheduleSave();
     if (render) { renderTimeline(); renderInspector(); }
@@ -151,7 +152,7 @@
   window.EditorAPI = {
     get P() { return P; }, get E() { return E; }, get keep() { return keep; }, get outDur() { return outDur; }, get srcDur() { return srcDur; },
     get sel() { return sel; }, get pps() { return pps; }, get playing() { return playing; }, get size() { return { W: OW, H: OH }; },
-    change, select, seekSrc, seekOut, play, pause, curT, scheduleSave, save, renderTimeline, renderInspector, layout, layoutRects, fmt, uid,
+    change, select, seekSrc, seekOut, play, pause, curT, invalidate: () => invalidate(), scheduleSave, save, renderTimeline, renderInspector, layout, layoutRects, fmt, uid,
     segEl: (...a) => segEl(...a), attachSegDrag: (...a) => attachSegDrag(...a),
     ui: { row: (...a) => row(...a), slider: (...a) => slider(...a), segButtons: (...a) => segButtons(...a), checkbox: (...a) => checkbox(...a), group: (...a) => group(...a), btn: (...a) => btn(...a), selTitle: (...a) => selTitle(...a) },
     setBusy: v => { busy = v; },
@@ -419,12 +420,27 @@
     }
   }
 
-  function frame() {
-    playbackTick();
-    draw();
+  // Önizleme yalnızca gerektiğinde çizilir: oynatılırken saniyede en çok 30 kez,
+  // durmuşken yalnızca bir şey değiştiğinde. Zayıf bilgisayarlarda işlemciyi boşa harcamaz.
+  let dirty = true, lastDraw = 0;
+  function invalidate() { dirty = true; }
+  function frame(now) {
     requestAnimationFrame(frame);
+    if (!P || App.view !== 'editor' || document.hidden) return;
+    playbackTick();
+    const animating = window.EditorHooks?.animating?.();
+    if (playing || animating) {
+      if (now - lastDraw < 31) return;
+    } else if (!dirty && now - lastDraw < 1000) return;
+    dirty = false;
+    lastDraw = now;
+    draw();
   }
   requestAnimationFrame(frame);
+  for (const ev of ['pointerdown', 'pointerup', 'input', 'change', 'keydown', 'wheel', 'click']) document.addEventListener(ev, invalidate, true);
+  document.addEventListener('pointermove', e => { if (e.buttons) invalidate(); }, true);
+  for (const v of [vScreen, vCam]) for (const ev of ['seeked', 'loadeddata', 'play', 'pause']) v.addEventListener(ev, invalidate);
+  addEventListener('resize', invalidate);
 
   // ---------- Önizleme etkileşimi ----------
   function previewPoint(e) {

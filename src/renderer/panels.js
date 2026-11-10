@@ -54,6 +54,7 @@
       cardPreview = null;
       lineCache = { key: '', lines: [] };
     },
+    animating() { return !!cardPreview; },
     afterOpen() { showTab(tab === 'tools' ? 'tools' : tab); },
     drawCard(ctx, W, H) {
       if (!cardPreview) return false;
@@ -376,7 +377,7 @@
   // Oynatırken o anki kelimeyi işaretle
   let lastWord = -1;
   function followWord() {
-    requestAnimationFrame(followWord);
+    setTimeout(followWord, 120);
     if (tab !== 'text' || !A.P || App.view !== 'editor') return;
     const body = $('transcript');
     if (!body) return;
@@ -393,7 +394,7 @@
       if (sb.top < pb.top + 60 || sb.bottom > pb.bottom - 40) sp.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
-  requestAnimationFrame(followWord);
+  setTimeout(followWord, 120);
 
   // ---------- TEMİZLİK ----------
   function renderClean() {

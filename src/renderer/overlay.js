@@ -65,8 +65,16 @@ addEventListener('keydown', e => {
   else if (e.key.toLowerCase() === 'g') { temporary = !temporary; api.overlay.emit({ type: 'temporary', on: temporary }); }
 });
 
+// Katman yalnızca çizim değiştiğinde yeniden çizilir; boşken ekran birleştirme yükü oluşturmaz.
+let inkDirty = true;
+const touch = () => { inkDirty = true; };
+for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'keydown']) addEventListener(ev, touch, true);
+addEventListener('resize', touch);
 function render() {
   const now = performance.now();
+  const animating = current || spot || strokes.some(s => s.temporary);
+  if (!animating && !inkDirty) { requestAnimationFrame(render); return; }
+  inkDirty = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   strokes = strokes.filter(s => !s.temporary || s === current || now - s.at < FADE_AFTER + FADE_TIME);
   for (const s of strokes) {
@@ -146,6 +154,7 @@ function renderCard(fields) {
 }
 
 api.overlay.onMessage(msg => {
+  inkDirty = true;
   switch (msg.type) {
     case 'init': {
       profile = msg.config.profile || 'ai';

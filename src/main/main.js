@@ -57,7 +57,7 @@ function createStudio() {
   studio = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1100, minHeight: 680,
     backgroundColor: '#0e1116', title: 'Mimoza Sahne', icon: ICON, show: false,
-    autoHideMenuBar: true, webPreferences: webPrefs(),
+    autoHideMenuBar: true, webPreferences: webPrefs({ backgroundThrottling: true }),
   });
   studio.setMenuBarVisibility(false);
   studio.loadFile(path.join(RENDERER, 'studio.html'));
@@ -82,7 +82,7 @@ function createOverlay(display) {
     backgroundColor: '#00000000', webPreferences: webPrefs(),
   });
   overlay.setAlwaysOnTop(true, 'screen-saver');
-  overlay.setIgnoreMouseEvents(true, { forward: true });
+  overlay.setIgnoreMouseEvents(true);
   overlay.setVisibleOnAllWorkspaces(true);
   overlay.loadFile(path.join(RENDERER, 'overlay.html'));
   overlay.once('ready-to-show', () => overlay.showInactive());
@@ -300,7 +300,7 @@ ipcMain.on('rec:chunk', (e, id, data) => {
   const t = rec?.tracks.get(id);
   if (!t || !data) return;
   t.bytes += data.byteLength;
-  t.stream.write(Buffer.from(data));
+  t.stream.write(Buffer.from(data.buffer, data.byteOffset, data.byteLength));
 });
 
 ipcMain.handle('rec:started', () => {
@@ -325,7 +325,7 @@ ipcMain.on('rec:paused', (e, paused) => {
 ipcMain.on('overlay:send', (e, msg) => {
   if (!overlay) return;
   if (msg.type === 'draw') {
-    overlay.setIgnoreMouseEvents(!msg.on, { forward: true });
+    overlay.setIgnoreMouseEvents(!msg.on);
     overlay.setFocusable(!!msg.on);
     if (msg.on) overlay.focus();
     raiseControlBar();

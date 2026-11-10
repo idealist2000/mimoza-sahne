@@ -47,7 +47,7 @@ function tick() {
     $('level').style.height = Math.min(100, peak / 128 * 160) + '%';
     $('level').style.background = peak > 115 ? 'var(--red)' : 'var(--green)';
   }
-  requestAnimationFrame(tick);
+  setTimeout(tick, 100);
 }
 
 function pickMime(kind) {
@@ -324,5 +324,5 @@ $('temporary').onchange = () => api.overlay.send({ type: 'temporary', on: $('tem
 // Kontrol çubuğu boyutu çizim araçlarına göre değişir
 new MutationObserver(() => api.rec.resize?.($('bar').offsetHeight + 8)).observe($('tools'), { attributes: true });
 
-requestAnimationFrame(tick);
+tick();
 start();
